@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 
 const USER_ID = "dev-user"; // temporário
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const transactions = await prisma.transaction.findMany({
     where: { userId: USER_ID },
