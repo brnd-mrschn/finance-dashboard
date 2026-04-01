@@ -1,28 +1,25 @@
-import { prisma } from "@/lib/db";
-import { NextResponse } from "next/server";
-
-const USER_ID = "dev-user"; // temporário
-
 export const dynamic = "force-dynamic";
 
+import { NextResponse } from "next/server";
+
+// ❗ IMPORTANTE: lazy import
 export async function GET() {
+  const { prisma } = await import("@/lib/db");
+
   const transactions = await prisma.transaction.findMany({
-    where: { userId: USER_ID },
     orderBy: { date: "desc" },
-    include: { category: true },
   });
 
   return NextResponse.json(transactions);
 }
 
 export async function POST(req: Request) {
+  const { prisma } = await import("@/lib/db");
+
   const body = await req.json();
 
   const transaction = await prisma.transaction.create({
-    data: {
-      ...body,
-      userId: USER_ID,
-    },
+    data: body,
   });
 
   return NextResponse.json(transaction);
