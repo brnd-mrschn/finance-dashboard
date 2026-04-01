@@ -1,8 +1,8 @@
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 
-// ❗ IMPORTANTE: lazy import
 export async function GET() {
   const { prisma } = await import("@/lib/db");
 
