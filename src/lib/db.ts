@@ -7,11 +7,7 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL, // 👈 AQUI
-      },
-    },
+    datasourceUrl: process.env.DATABASE_URL, // 👈 CORRETO NO PRISMA 7
   });
 
 if (process.env.NODE_ENV !== "production") {
