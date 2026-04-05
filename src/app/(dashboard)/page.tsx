@@ -1,14 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuthGuard } from "@/lib/useAuthGuard";
 import { Card } from "@/app/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { motion } from 'framer-motion';
 
 export default function Dashboard() {
+  useAuthGuard();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [error, setError] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [selectedYear, setSelectedYear] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
 
   useEffect(() => {
     fetch("/api/transactions")
@@ -25,12 +30,25 @@ export default function Dashboard() {
       .catch(console.error);
   }, []);
 
+  // Filtros dinâmicos
+  const uniqueYears = Array.from(new Set(transactions.map(t => new Date(t.date).getFullYear())));
+  const uniqueMonths = Array.from(new Set(transactions.map(t => new Date(t.date).getMonth() + 1)));
+
+  // Aplicar filtros
+  const filteredTransactions = transactions.filter((t) => {
+    const date = new Date(t.date);
+    const yearMatch = selectedYear ? date.getFullYear().toString() === selectedYear : true;
+    const monthMatch = selectedMonth ? (date.getMonth() + 1).toString() === selectedMonth : true;
+    const categoryMatch = selectedCategory ? t.categoryId === selectedCategory : true;
+    return yearMatch && monthMatch && categoryMatch;
+  });
+
   // 💰 cálculos
-  const income = transactions
+  const income = filteredTransactions
     .filter((t) => t.type === "INCOME")
     .reduce((acc, t) => acc + t.amount, 0);
 
-  const expense = transactions
+  const expense = filteredTransactions
     .filter((t) => t.type === "EXPENSE")
     .reduce((acc, t) => acc + t.amount, 0);
 
@@ -38,7 +56,7 @@ export default function Dashboard() {
 
   // Dados para gráfico de pizza (despesas por categoria)
   const expenseByCategory = categories.map(cat => {
-    const total = transactions
+    const total = filteredTransactions
       .filter(t => t.categoryId === cat.id && t.type === "EXPENSE")
       .reduce((acc, t) => acc + t.amount, 0);
     return { name: cat.name, value: total };
@@ -47,7 +65,7 @@ export default function Dashboard() {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
   // Dados para gráfico de barras (receitas vs despesas por mês)
-  const monthlyData = transactions.reduce((acc, t) => {
+  const monthlyData = filteredTransactions.reduce((acc, t) => {
     const month = new Date(t.date).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
     if (!acc[month]) acc[month] = { month, income: 0, expense: 0 };
     if (t.type === "INCOME") acc[month].income += t.amount;
@@ -63,14 +81,48 @@ export default function Dashboard() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <motion.h1 
-        className="text-3xl font-bold mb-8 text-[#7289da] tracking-tight"
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-      >
-        Dashboard
-      </motion.h1>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+        <motion.h1 
+          className="text-3xl font-bold text-[#7289da] tracking-tight"
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          Dashboard
+        </motion.h1>
+        <div className="flex gap-2 flex-wrap items-center justify-end">
+          <select
+            className="bg-[#23272a] border border-[#2c2f33] text-[#f2f3f5] rounded px-3 py-2 outline-none"
+            value={selectedYear}
+            onChange={e => setSelectedYear(e.target.value)}
+          >
+            <option value="">Ano</option>
+            {uniqueYears.map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <select
+            className="bg-[#23272a] border border-[#2c2f33] text-[#f2f3f5] rounded px-3 py-2 outline-none"
+            value={selectedMonth}
+            onChange={e => setSelectedMonth(e.target.value)}
+          >
+            <option value="">Mês</option>
+            {uniqueMonths.map(m => (
+              <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>
+            ))}
+          </select>
+          <select
+            className="bg-[#23272a] border border-[#2c2f33] text-[#f2f3f5] rounded px-3 py-2 outline-none"
+            value={selectedCategory}
+            onChange={e => setSelectedCategory(e.target.value)}
+          >
+            <option value="">Categoria</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {/* 🔥 👉 COLOCA AQUI 👇 */}
       <motion.div 
