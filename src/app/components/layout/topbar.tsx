@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -8,7 +9,8 @@ const navItems = [
   { href: "/settings", label: "Configurações" },
 ];
 
-export function Topbar({ current }: { current: string }) {
+export function Topbar() {
+  const pathname = usePathname();
   return (
     <motion.nav
       className="w-full flex items-center h-16 px-6 bg-[#23272a] border-b border-[#2c2f33] shadow-sm z-10"
@@ -21,7 +23,7 @@ export function Topbar({ current }: { current: string }) {
         {navItems.map((item) => (
           <Link key={item.href} href={item.href}>
             <motion.span
-              className={`px-3 py-1 rounded-md font-medium text-white hover:bg-[#40444b] transition-colors ${current === item.href ? "bg-[#5865f2] text-white" : ""}`}
+              className={`px-3 py-1 rounded-md font-medium text-white hover:bg-[#40444b] transition-colors ${pathname === item.href ? "bg-[#5865f2] text-white" : ""}`}
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.97 }}
             >

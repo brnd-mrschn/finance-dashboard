@@ -1,12 +1,11 @@
-import { Topbar } from "@/app/components/layout/topbar";
-import { usePathname } from "next/navigation";
+"use client";
 
-export default function Layout({ children }) {
-  // Detecta a rota atual para destacar o menu
-  const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
+import { Topbar } from "@/app/components/layout/topbar";
+
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#313338] text-white flex flex-col">
-      <Topbar current={pathname} />
+      <Topbar />
       <main className="flex-1 p-6 max-w-5xl w-full mx-auto">{children}</main>
     </div>
   );
