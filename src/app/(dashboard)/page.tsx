@@ -131,6 +131,7 @@ export default function Dashboard() {
                 outerRadius={80}
                 fill="#5865f2"
                 dataKey="value"
+                label={false}
               >
                 {expenseByCategory.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
