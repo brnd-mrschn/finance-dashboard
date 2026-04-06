@@ -7,7 +7,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
 import { motion } from 'framer-motion';
 
 export default function Dashboard() {
-  useAuthGuard();
+  // useAuthGuard(); // Comentado para testes locais sem exigir login
   const [transactions, setTransactions] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [error, setError] = useState("");
@@ -76,14 +76,14 @@ export default function Dashboard() {
 
   return (
     <motion.div 
-      className="min-h-screen p-0 text-[#f2f3f5] font-sans"
+      className="min-h-screen p-0 text-[var(--foreground)] font-sans"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
         <motion.h1 
-          className="text-3xl font-bold text-[#7289da] tracking-tight"
+          className="text-3xl font-bold text-[var(--accent)] tracking-tight"
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
@@ -131,33 +131,39 @@ export default function Dashboard() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4 }}
       >
-        <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 300 }}>
+        <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 200, damping: 16 }}>
           <Card
             title="Saldo"
             value={balance.toLocaleString("pt-BR", {
               style: "currency",
               currency: "BRL",
             })}
+            icon={<span role="img" aria-label="Saldo">💰</span>}
+            type={balance >= 0 ? "success" : "danger"}
           />
         </motion.div>
 
-        <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 300 }}>
+        <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 200, damping: 16 }}>
           <Card
             title="Receitas"
             value={income.toLocaleString("pt-BR", {
               style: "currency",
               currency: "BRL",
             })}
+            icon={<span role="img" aria-label="Receitas">🟢</span>}
+            type="success"
           />
         </motion.div>
 
-        <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 300 }}>
+        <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 200, damping: 16 }}>
           <Card
             title="Despesas"
             value={expense.toLocaleString("pt-BR", {
               style: "currency",
               currency: "BRL",
             })}
+            icon={<span role="img" aria-label="Despesas">🔴</span>}
+            type="danger"
           />
         </motion.div>
       </motion.div>

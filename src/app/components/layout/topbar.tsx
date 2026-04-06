@@ -2,11 +2,12 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
+import { ThemeToggle } from "@/app/components/ui/theme-toggle";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
   { href: "/finance", label: "Financeiro" },
-  { href: "/settings", label: "Configurações" },
+  // { href: "/settings", label: "Configurações" }, // Removido
 ];
 
 export function Topbar() {
@@ -19,7 +20,7 @@ export function Topbar() {
       transition={{ duration: 0.4 }}
     >
       <span className="text-xl font-bold text-[#7289da] tracking-tight mr-8 select-none">💸 Finance</span>
-      <div className="flex gap-4">
+      <div className="flex gap-4 flex-1">
         {navItems.map((item) => (
           <Link key={item.href} href={item.href}>
             <motion.span
@@ -31,6 +32,9 @@ export function Topbar() {
             </motion.span>
           </Link>
         ))}
+      </div>
+      <div className="flex items-center justify-end">
+        <ThemeToggle />
       </div>
     </motion.nav>
   );

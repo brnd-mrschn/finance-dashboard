@@ -1,4 +1,18 @@
+
 @import "tailwindcss";
+
+html.light {
+  --background: #f2f3f5;
+  --foreground: #23272a;
+  --primary: #5865f2;
+  --primary-dark: #4752c4;
+  --accent: #7289da;
+  --surface: #fff;
+  --surface-alt: #e3e5e8;
+  --danger: #ed4245;
+  --success: #43b581;
+}
+
 
 :root {
   --background: #313338;
@@ -20,6 +34,7 @@ body {
   transition: background 0.3s, color 0.3s;
 }
 
+  /* Removido bloco solto inválido */
 ::-webkit-scrollbar {
   width: 8px;
   background: #23272a;
