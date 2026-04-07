@@ -3,7 +3,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { getSupabaseClient } from "./supabase";
 
 
 // Adicione aqui os e-mails autorizados
@@ -16,7 +16,11 @@ export function useAuthGuard() {
   const router = useRouter();
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = createClientComponentClient();
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        router.replace("/login");
+        return;
+      }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !user.email || !ALLOWED_EMAILS.includes(user.email)) {
         router.replace("/login");
