@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 const ALLOWED_EMAILS = [
   "seuemail@gmail.com", // Substitua pelo(s) email(s) autorizado(s)
@@ -13,6 +13,12 @@ export function useAuthGuard() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        router.replace("/login");
+        return;
+      }
+
       const { data, error } = await supabase.auth.getUser();
       if (error || !data.user) {
         router.replace("/login");

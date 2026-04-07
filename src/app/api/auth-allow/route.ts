@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 
 const ALLOWED_EMAILS = [
   "monef4xgames@gmail.com", // Substitua pelo(s) email(s) autorizado(s)
