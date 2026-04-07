@@ -1,3 +1,16 @@
+/* Garante contraste do texto das opções dos selects em ambos os temas */
+select, select option {
+  color: var(--foreground) !important;
+  background: var(--surface) !important;
+}
+html.light select, html.light select option {
+  color: var(--foreground) !important;
+  background: var(--surface) !important;
+}
+html.dark select, html.dark select option {
+  color: var(--foreground) !important;
+  background: var(--surface) !important;
+}
 
 @import "tailwindcss";
 
@@ -37,9 +50,16 @@ body {
   /* Removido bloco solto inválido */
 ::-webkit-scrollbar {
   width: 8px;
-  background: #23272a;
+  background: #22272b;
 }
 ::-webkit-scrollbar-thumb {
-  background: #5865f2;
+  background: #888c91;
   border-radius: 4px;
+}
+
+html.light ::-webkit-scrollbar {
+  background: #e3e5e8;
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: #bfc2c7;
 }

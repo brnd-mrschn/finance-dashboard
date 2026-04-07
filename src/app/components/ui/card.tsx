@@ -12,27 +12,27 @@ type CardProps = {
 
 const typeColors = {
   default: {
-    bg: "bg-[#23272a]",
-    border: "border-[#2c2f33]",
-    text: "text-[#f2f3f5]",
+    bg: "bg-[var(--surface)]",
+    border: "border-[var(--surface-alt)]",
+    text: "text-[var(--foreground)]",
     accent: "text-[#7289da]",
   },
   success: {
-    bg: "bg-[#23272a]",
+    bg: "bg-[var(--surface)]",
     border: "border-[#43b581]",
-    text: "text-[#f2f3f5]",
+    text: "text-[var(--foreground)]",
     accent: "text-[#43b581]",
   },
   danger: {
-    bg: "bg-[#23272a]",
+    bg: "bg-[var(--surface)]",
     border: "border-[#ed4245]",
-    text: "text-[#f2f3f5]",
+    text: "text-[var(--foreground)]",
     accent: "text-[#ed4245]",
   },
   info: {
-    bg: "bg-[#23272a]",
+    bg: "bg-[var(--surface)]",
     border: "border-[#7289da]",
-    text: "text-[#f2f3f5]",
+    text: "text-[var(--foreground)]",
     accent: "text-[#7289da]",
   },
 };

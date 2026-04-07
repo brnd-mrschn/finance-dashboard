@@ -14,17 +14,17 @@ export function Topbar() {
   const pathname = usePathname();
   return (
     <motion.nav
-      className="w-full flex items-center h-16 px-6 bg-[#23272a] border-b border-[#2c2f33] shadow-sm z-10"
+      className="w-full flex items-center h-16 px-6 bg-[var(--surface)] border-b border-[var(--surface-alt)] shadow-sm z-10"
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4 }}
     >
-      <span className="text-xl font-bold text-[#7289da] tracking-tight mr-8 select-none">💸 Finance</span>
+      <span className="text-xl font-bold text-[var(--accent)] tracking-tight mr-8 select-none">💸 Finance</span>
       <div className="flex gap-4 flex-1">
         {navItems.map((item) => (
           <Link key={item.href} href={item.href}>
             <motion.span
-              className={`px-3 py-1 rounded-md font-medium text-white hover:bg-[#40444b] transition-colors ${pathname === item.href ? "bg-[#5865f2] text-white" : ""}`}
+              className={`px-3 py-1 rounded-md font-medium text-[var(--foreground)] hover:bg-[var(--surface-alt)] transition-colors ${pathname === item.href ? "bg-[var(--primary)] text-[var(--foreground)]" : ""}`}
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.97 }}
             >

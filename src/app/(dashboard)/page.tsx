@@ -1,132 +1,421 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuthGuard } from "@/lib/useAuthGuard";
+import { FiSearch, FiX } from "react-icons/fi";
+import { motion } from "framer-motion";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
 import { Card } from "@/app/components/ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { motion } from 'framer-motion';
+
+type Transaction = {
+  id: string;
+  description: string;
+  date: string;
+  amount: number;
+  type: "INCOME" | "EXPENSE";
+  categoryId: string;
+};
+
+type Category = {
+  id: string;
+  name: string;
+  expected?: number | null;
+};
 
 export default function Dashboard() {
-  // useAuthGuard(); // Comentado para testes locais sem exigir login
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState<string>("");
-  const [selectedYear, setSelectedYear] = useState<string>("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [searchResults, setSearchResults] = useState<Transaction[]>([]);
 
   useEffect(() => {
     fetch("/api/transactions")
       .then((res) => res.json())
-      .then(setTransactions)
-      .catch((err) => {
-        console.error(err);
+      .then((data: Transaction[]) => setTransactions(data))
+      .catch((fetchError) => {
+        console.error(fetchError);
         setError("Erro ao carregar dados");
       });
 
     fetch("/api/categories")
       .then((res) => res.json())
-      .then(setCategories)
+      .then((data: Category[]) => setCategories(data))
       .catch(console.error);
   }, []);
 
-  // Filtros dinâmicos
-  const uniqueYears = Array.from(new Set(transactions.map(t => new Date(t.date).getFullYear())));
-  const uniqueMonths = Array.from(new Set(transactions.map(t => new Date(t.date).getMonth() + 1)));
+  const getCategoryName = (categoryId: string) => {
+    return categories.find((category) => category.id === categoryId)?.name ?? "Sem categoria";
+  };
 
-  // Aplicar filtros
-  const filteredTransactions = transactions.filter((t) => {
-    const date = new Date(t.date);
+  const matchesSearch = (transaction: Transaction, rawTerm: string) => {
+    const term = rawTerm.trim().toLowerCase();
+
+    if (!term) {
+      return false;
+    }
+
+    const description = transaction.description?.toLowerCase() ?? "";
+    const category = getCategoryName(transaction.categoryId).toLowerCase();
+    const formattedDate = new Date(transaction.date).toLocaleDateString("pt-BR");
+    const isoDate = new Date(transaction.date).toISOString().slice(0, 10);
+    const amount = transaction.amount.toString();
+    const formattedAmount = transaction.amount.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+
+    return (
+      description.includes(term) ||
+      category.includes(term) ||
+      formattedDate.includes(term) ||
+      isoDate.includes(term) ||
+      amount.includes(term) ||
+      formattedAmount.toLowerCase().includes(term)
+    );
+  };
+
+  const runSearch = (term: string) => {
+    const normalizedTerm = term.trim();
+
+    if (!normalizedTerm) {
+      setSearchResults([]);
+      setShowModal(false);
+      return;
+    }
+
+    const results = transactions.filter((transaction) => matchesSearch(transaction, normalizedTerm));
+    setSearchResults(results);
+    setShowModal(true);
+  };
+
+  const uniqueYears = Array.from(
+    new Set(transactions.map((transaction) => new Date(transaction.date).getFullYear()))
+  );
+  const uniqueMonths = Array.from(
+    new Set(transactions.map((transaction) => new Date(transaction.date).getMonth() + 1))
+  );
+
+  const filteredTransactions = transactions.filter((transaction) => {
+    const date = new Date(transaction.date);
     const yearMatch = selectedYear ? date.getFullYear().toString() === selectedYear : true;
     const monthMatch = selectedMonth ? (date.getMonth() + 1).toString() === selectedMonth : true;
-    const categoryMatch = selectedCategory ? t.categoryId === selectedCategory : true;
+    const categoryMatch = selectedCategory ? transaction.categoryId === selectedCategory : true;
+
     return yearMatch && monthMatch && categoryMatch;
   });
 
-  // 💰 cálculos
+  const liveSearchResults = searchTerm.trim()
+    ? transactions.filter((transaction) => matchesSearch(transaction, searchTerm))
+    : [];
+  const suggestionResults = liveSearchResults.slice(0, 6);
+
   const income = filteredTransactions
-    .filter((t) => t.type === "INCOME")
-    .reduce((acc, t) => acc + t.amount, 0);
-
+    .filter((transaction) => transaction.type === "INCOME")
+    .reduce((accumulator, transaction) => accumulator + transaction.amount, 0);
   const expense = filteredTransactions
-    .filter((t) => t.type === "EXPENSE")
-    .reduce((acc, t) => acc + t.amount, 0);
-
+    .filter((transaction) => transaction.type === "EXPENSE")
+    .reduce((accumulator, transaction) => accumulator + transaction.amount, 0);
   const balance = income - expense;
 
-  // Dados para gráfico de pizza (despesas por categoria)
-  const expenseByCategory = categories.map(cat => {
-    const total = filteredTransactions
-      .filter(t => t.categoryId === cat.id && t.type === "EXPENSE")
-      .reduce((acc, t) => acc + t.amount, 0);
-    return { name: cat.name, value: total };
-  }).filter(item => item.value > 0);
+  const expenseByCategory = categories
+    .map((category) => {
+      const total = filteredTransactions
+        .filter(
+          (transaction) =>
+            transaction.categoryId === category.id && transaction.type === "EXPENSE"
+        )
+        .reduce((accumulator, transaction) => accumulator + transaction.amount, 0);
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+      return { name: category.name, value: total };
+    })
+    .filter((item) => item.value > 0);
 
-  // Dados para gráfico de barras (receitas vs despesas por mês)
-  const monthlyData = filteredTransactions.reduce((acc, t) => {
-    const month = new Date(t.date).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
-    if (!acc[month]) acc[month] = { month, income: 0, expense: 0 };
-    if (t.type === "INCOME") acc[month].income += t.amount;
-    else acc[month].expense += t.amount;
-    return acc;
+  const monthlyData = filteredTransactions.reduce<
+    Record<string, { month: string; income: number; expense: number }>
+  >((accumulator, transaction) => {
+    const month = new Date(transaction.date).toLocaleDateString("pt-BR", {
+      month: "short",
+      year: "numeric",
+    });
+
+    if (!accumulator[month]) {
+      accumulator[month] = { month, income: 0, expense: 0 };
+    }
+
+    if (transaction.type === "INCOME") {
+      accumulator[month].income += transaction.amount;
+    } else {
+      accumulator[month].expense += transaction.amount;
+    }
+
+    return accumulator;
   }, {});
+
+  const colors = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
   const barData = Object.values(monthlyData);
 
   return (
-    <motion.div 
-      className="min-h-screen p-0 text-[var(--foreground)] font-sans"
+    <motion.div
+      className="min-h-screen p-0 font-sans text-[var(--foreground)]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
-        <motion.h1 
-          className="text-3xl font-bold text-[var(--accent)] tracking-tight"
+      <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <motion.h1
+          className="text-3xl font-bold tracking-tight text-[var(--foreground)]"
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
           Dashboard
         </motion.h1>
-        <div className="flex gap-2 flex-wrap items-center justify-end">
-          <select
-            className="bg-[#23272a] border border-[#2c2f33] text-[#f2f3f5] rounded px-3 py-2 outline-none"
-            value={selectedYear}
-            onChange={e => setSelectedYear(e.target.value)}
+
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-end">
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--surface-alt)] bg-[var(--surface)] px-4 py-2 shadow-sm">
+            <div className="flex flex-col items-start">
+              <label className="mb-1 ml-1 text-xs font-semibold text-[var(--foreground)]">
+                Ano
+              </label>
+              <select
+                className="rounded border-none bg-transparent px-2 py-1 text-[var(--foreground)] outline-none transition-all focus:ring-2 focus:ring-[var(--primary)]"
+                value={selectedYear}
+                onChange={(event) => setSelectedYear(event.target.value)}
+              >
+                <option value="">Todos</option>
+                {uniqueYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col items-start">
+              <label className="mb-1 ml-1 text-xs font-semibold text-[var(--foreground)]">
+                Mês
+              </label>
+              <select
+                className="rounded border-none bg-transparent px-2 py-1 text-[var(--foreground)] outline-none transition-all focus:ring-2 focus:ring-[var(--primary)]"
+                value={selectedMonth}
+                onChange={(event) => setSelectedMonth(event.target.value)}
+              >
+                <option value="">Todos</option>
+                {uniqueMonths.map((month) => (
+                  <option key={month} value={month}>
+                    {month.toString().padStart(2, "0")}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col items-start">
+              <label className="mb-1 ml-1 text-xs font-semibold text-[var(--foreground)]">
+                Categoria
+              </label>
+              <select
+                className="rounded border-none bg-transparent px-2 py-1 text-[var(--foreground)] outline-none transition-all focus:ring-2 focus:ring-[var(--primary)]"
+                value={selectedCategory}
+                onChange={(event) => setSelectedCategory(event.target.value)}
+              >
+                <option value="">Todas</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div
+            className={`relative flex h-14 items-center rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] shadow-sm transition-[width] duration-300 ${
+              searchOpen ? "w-full lg:w-[28rem]" : "w-14"
+            }`}
           >
-            <option value="">Ano</option>
-            {uniqueYears.map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-          <select
-            className="bg-[#23272a] border border-[#2c2f33] text-[#f2f3f5] rounded px-3 py-2 outline-none"
-            value={selectedMonth}
-            onChange={e => setSelectedMonth(e.target.value)}
-          >
-            <option value="">Mês</option>
-            {uniqueMonths.map(m => (
-              <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>
-            ))}
-          </select>
-          <select
-            className="bg-[#23272a] border border-[#2c2f33] text-[#f2f3f5] rounded px-3 py-2 outline-none"
-            value={selectedCategory}
-            onChange={e => setSelectedCategory(e.target.value)}
-          >
-            <option value="">Categoria</option>
-            {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
+            <button
+              type="button"
+              className="flex h-14 w-14 items-center justify-center text-[var(--foreground)]"
+              onClick={() => {
+                if (searchOpen) {
+                  setSearchOpen(false);
+                  setSearchTerm("");
+                  return;
+                }
+
+                setSearchOpen(true);
+              }}
+              aria-label="Abrir busca"
+            >
+              <FiSearch className="text-xl" />
+            </button>
+
+            {searchOpen && (
+              <>
+                <input
+                  autoFocus
+                  type="text"
+                  className="h-full w-full bg-transparent pr-12 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)]"
+                  placeholder="Buscar por descrição, data, categoria ou valor"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setSearchOpen(false);
+                      setSearchTerm("");
+                    }
+
+                    if (event.key === "Enter") {
+                      runSearch(searchTerm);
+                    }
+                  }}
+                />
+
+                {searchTerm && (
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-[var(--foreground)] transition-colors hover:bg-[var(--surface-alt)]"
+                    onClick={() => setSearchTerm("")}
+                    aria-label="Limpar busca"
+                  >
+                    <FiX className="text-base" />
+                  </button>
+                )}
+
+                {searchTerm.trim() && (
+                  <div className="absolute left-0 top-[calc(100%+0.75rem)] z-30 w-full rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-3 shadow-2xl">
+                    <div className="mb-2 flex items-center justify-between px-1 text-xs text-[var(--muted-foreground)]">
+                      <span>{liveSearchResults.length} resultado(s)</span>
+                      <span>Enter abre todos</span>
+                    </div>
+
+                    {suggestionResults.length === 0 ? (
+                      <p className="px-1 py-3 text-sm text-[var(--muted-foreground)]">
+                        Nenhuma correspondência encontrada.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {suggestionResults.map((transaction) => (
+                          <button
+                            key={transaction.id}
+                            type="button"
+                            className="flex w-full items-center justify-between rounded-xl border border-[var(--surface-alt)] px-3 py-2 text-left transition-colors hover:bg-[var(--surface-alt)]"
+                            onClick={() => runSearch(searchTerm)}
+                          >
+                            <div>
+                              <p className="font-medium text-[var(--foreground)]">
+                                {transaction.description}
+                              </p>
+                              <p className="text-xs text-[var(--muted-foreground)]">
+                                {new Date(transaction.date).toLocaleDateString("pt-BR")} · {getCategoryName(transaction.categoryId)}
+                              </p>
+                            </div>
+                            <span
+                              className={
+                                transaction.type === "INCOME"
+                                  ? "font-bold text-[#43b581]"
+                                  : "font-bold text-[#ed4245]"
+                              }
+                            >
+                              {transaction.amount.toLocaleString("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              })}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 🔥 👉 COLOCA AQUI 👇 */}
-      <motion.div 
-        className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10"
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="relative max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6 shadow-2xl md:p-8">
+            <button
+              type="button"
+              className="absolute right-4 top-4 rounded-full p-2 text-[var(--foreground)] transition-colors hover:bg-[var(--surface-alt)]"
+              onClick={() => setShowModal(false)}
+              aria-label="Fechar resultados"
+            >
+              <FiX className="text-2xl" />
+            </button>
+
+            <div className="mb-6 pr-12">
+              <p className="text-sm text-[var(--muted-foreground)]">Busca independente dos filtros</p>
+              <h2 className="text-2xl font-bold text-[var(--foreground)]">Resultados da busca</h2>
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                {searchResults.length} resultado(s) para "{searchTerm.trim()}"
+              </p>
+            </div>
+
+            {searchResults.length === 0 ? (
+              <div className="rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface-alt)] px-4 py-8 text-center text-[var(--foreground)]">
+                Nenhum resultado encontrado.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {searchResults.map((transaction) => (
+                  <div
+                    key={transaction.id}
+                    className="flex flex-col gap-4 rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface-alt)] p-4 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div>
+                      <p className="text-base font-semibold text-[var(--foreground)]">
+                        {transaction.description}
+                      </p>
+                      <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                        {new Date(transaction.date).toLocaleDateString("pt-BR")}
+                      </p>
+                      <p className="mt-1 text-sm text-[var(--foreground)]">
+                        Categoria: {getCategoryName(transaction.categoryId)}
+                      </p>
+                    </div>
+                    <p
+                      className={
+                        transaction.type === "INCOME"
+                          ? "text-lg font-bold text-[#43b581]"
+                          : "text-lg font-bold text-[#ed4245]"
+                      }
+                    >
+                      {transaction.amount.toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <motion.div
+        className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-3"
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4 }}
@@ -167,89 +456,153 @@ export default function Dashboard() {
           />
         </motion.div>
       </motion.div>
-      {/* 🔥 👆 AQUI */}
 
       {error && <p className="text-[#ed4245]">{error}</p>}
 
-      {/* Gráficos */}
-      <motion.div 
-        className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10"
+      <motion.div
+        className="mb-10 grid grid-cols-1 gap-8 md:grid-cols-2"
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.6 }}
       >
-        <div className="bg-[#23272a] p-6 rounded-2xl border border-[#2c2f33]">
-          <h3 className="text-lg font-semibold mb-4 text-[#b9bbbe]">Despesas por Categoria</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={expenseByCategory}
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                fill="#5865f2"
-                dataKey="value"
-                label={false}
-              >
-                {expenseByCategory.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6">
+          <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
+            Despesas por Categoria
+          </h3>
+          <div className="flex h-[240px] w-full items-center justify-center">
+            <ResponsiveContainer width="80%" height={220}>
+              <PieChart>
+                <Pie
+                  data={expenseByCategory}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  innerRadius={50}
+                  fill="#5865f2"
+                  dataKey="value"
+                  label={false}
+                >
+                  {expenseByCategory.map((entry, index) => (
+                    <Cell key={`cell-${entry.name}`} fill={colors[index % colors.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
-        <div className="bg-[#23272a] p-6 rounded-2xl border border-[#2c2f33]">
-          <h3 className="text-lg font-semibold mb-4 text-[#b9bbbe]">Receitas vs Despesas Mensais</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={barData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#40444b" />
-              <XAxis dataKey="month" stroke="#b9bbbe" />
-              <YAxis stroke="#b9bbbe" />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="income" fill="#43b581" name="Receitas" />
-              <Bar dataKey="expense" fill="#ed4245" name="Despesas" />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6">
+          <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
+            Gastos Esperados vs Gastos Reais
+          </h3>
+          <div className="flex h-[240px] w-full items-center justify-center">
+            <ResponsiveContainer width="90%" height={220}>
+              <BarChart
+                data={categories.map((category) => ({
+                  name: category.name,
+                  esperado: category.expected ?? 0,
+                  real: filteredTransactions
+                    .filter(
+                      (transaction) =>
+                        transaction.categoryId === category.id && transaction.type === "EXPENSE"
+                    )
+                    .reduce((accumulator, transaction) => accumulator + transaction.amount, 0),
+                }))}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#40444b" />
+                <XAxis dataKey="name" stroke="#b9bbbe" />
+                <YAxis stroke="#b9bbbe" />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="esperado" fill="#b9bbbe" name="Esperado" />
+                <Bar dataKey="real" fill="#ed4245" name="Real" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6">
+          <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
+            Receitas vs Despesas Mensais
+          </h3>
+          <div className="flex h-[240px] w-full items-center justify-center">
+            <ResponsiveContainer width="90%" height={220}>
+              <BarChart data={barData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#40444b" />
+                <XAxis dataKey="month" stroke="#b9bbbe" />
+                <YAxis stroke="#b9bbbe" />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="income" fill="#43b581" name="Receitas" />
+                <Bar dataKey="expense" fill="#ed4245" name="Despesas" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="min-h-[320px] rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6">
+          <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
+            Gastos por Categoria
+          </h3>
+          <ul className="max-h-48 space-y-2 overflow-y-auto">
+            {categories.map((category) => (
+              <li key={category.id} className="flex justify-between text-[var(--foreground)]">
+                <span>{category.name}</span>
+                <span>
+                  {filteredTransactions
+                    .filter(
+                      (transaction) =>
+                        transaction.categoryId === category.id && transaction.type === "EXPENSE"
+                    )
+                    .reduce((accumulator, transaction) => accumulator + transaction.amount, 0)
+                    .toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    })}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </motion.div>
 
-      {/* 📄 lista continua igual */}
-      {transactions.length === 0 ? (
+      {filteredTransactions.length === 0 ? (
         <p className="text-[#b9bbbe]">Nenhuma transação encontrada</p>
       ) : (
-        <motion.div 
+        <motion.div
           className="space-y-4"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.8 }}
         >
-          {transactions.map((t, index) => (
+          {filteredTransactions.map((transaction, index) => (
             <motion.div
-              key={t.id}
-              className="bg-[#23272a] p-4 rounded-lg flex justify-between items-center border border-[#2c2f33] hover:bg-[#2c2f33] transition-colors"
+              key={transaction.id}
+              className="flex items-center justify-between rounded-lg border border-[var(--surface-alt)] bg-[var(--surface)] p-4 transition-colors hover:bg-[var(--surface-alt)]"
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.1 * index }}
               whileHover={{ scale: 1.01 }}
             >
               <div>
-                <p className="font-medium text-[#f2f3f5]">{t.description}</p>
-                <p className="text-xs text-[#b9bbbe]">
-                  {new Date(t.date).toLocaleDateString()}
+                <p className="font-medium text-[var(--foreground)]">{transaction.description}</p>
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  {new Date(transaction.date).toLocaleDateString("pt-BR")} · {getCategoryName(transaction.categoryId)}
                 </p>
               </div>
 
               <p
                 className={
-                  t.type === "INCOME"
-                    ? "text-[#43b581] font-bold"
-                    : "text-[#ed4245] font-bold"
+                  transaction.type === "INCOME"
+                    ? "font-bold text-[#43b581]"
+                    : "font-bold text-[#ed4245]"
                 }
               >
-                R$ {t.amount}
+                {transaction.amount.toLocaleString("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
               </p>
             </motion.div>
           ))}
