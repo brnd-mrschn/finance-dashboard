@@ -3,19 +3,9 @@
 import { useEffect, useState } from "react";
 import { FiSearch, FiX } from "react-icons/fi";
 import { motion } from "framer-motion";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import dynamic from "next/dynamic";
+// Import dinâmico para evitar SSR issues
+const ApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 import { Card } from "@/app/components/ui/card";
 
@@ -469,26 +459,27 @@ export default function Dashboard() {
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Despesas por Categoria
           </h3>
-          <div className="flex h-[240px] w-full items-center justify-center">
-            <ResponsiveContainer width="80%" height={220}>
-              <PieChart>
-                <Pie
-                  data={expenseByCategory}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  innerRadius={50}
-                  fill="#5865f2"
-                  dataKey="value"
-                  label={false}
-                >
-                  {expenseByCategory.map((entry, index) => (
-                    <Cell key={`cell-${entry.name}`} fill={colors[index % colors.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="flex h-[240px] w-full items-center justify-center w-full">
+            <ApexChart
+              type="donut"
+              width={260}
+              height={220}
+              series={expenseByCategory.map((item) => item.value)}
+              options={{
+                labels: expenseByCategory.map((item) => item.name),
+                colors,
+                legend: { show: true, labels: { colors: "var(--foreground)" } },
+                dataLabels: { enabled: false },
+                tooltip: { theme: "dark" },
+                chart: { background: "transparent" },
+                stroke: { width: 0 },
+                plotOptions: {
+                  pie: {
+                    donut: { size: '65%' },
+                  },
+                },
+              }}
+            />
           </div>
         </div>
 
@@ -496,29 +487,43 @@ export default function Dashboard() {
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Gastos Esperados vs Gastos Reais
           </h3>
-          <div className="flex h-[240px] w-full items-center justify-center">
-            <ResponsiveContainer width="90%" height={220}>
-              <BarChart
-                data={categories.map((category) => ({
-                  name: category.name,
-                  esperado: category.expected ?? 0,
-                  real: filteredTransactions
-                    .filter(
-                      (transaction) =>
-                        transaction.categoryId === category.id && transaction.type === "EXPENSE"
-                    )
-                    .reduce((accumulator, transaction) => accumulator + transaction.amount, 0),
-                }))}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#40444b" />
-                <XAxis dataKey="name" stroke="#b9bbbe" />
-                <YAxis stroke="#b9bbbe" />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="esperado" fill="#b9bbbe" name="Esperado" />
-                <Bar dataKey="real" fill="#ed4245" name="Real" />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="flex h-[240px] w-full items-center justify-center w-full">
+            <ApexChart
+              type="bar"
+              width={380}
+              height={220}
+              series={[
+                {
+                  name: "Esperado",
+                  data: categories.map((category) => category.expected ?? 0),
+                },
+                {
+                  name: "Real",
+                  data: categories.map((category) =>
+                    filteredTransactions
+                      .filter(
+                        (transaction) =>
+                          transaction.categoryId === category.id && transaction.type === "EXPENSE"
+                      )
+                      .reduce((accumulator, transaction) => accumulator + transaction.amount, 0)
+                  ),
+                },
+              ]}
+              options={{
+                chart: { background: "transparent", stacked: false, toolbar: { show: false } },
+                theme: { mode: "dark" },
+                xaxis: {
+                  categories: categories.map((category) => category.name),
+                  labels: { style: { colors: "var(--foreground)" } },
+                },
+                yaxis: { labels: { style: { colors: "var(--foreground)" } } },
+                legend: { labels: { colors: "var(--foreground)" } },
+                colors: ["#b9bbbe", "#ed4245"],
+                grid: { borderColor: "var(--surface-alt)", strokeDashArray: 4 },
+                tooltip: { theme: "dark" },
+                plotOptions: { bar: { borderRadius: 6, columnWidth: '40%' } },
+              }}
+            />
           </div>
         </div>
 
@@ -526,18 +531,36 @@ export default function Dashboard() {
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Receitas vs Despesas Mensais
           </h3>
-          <div className="flex h-[240px] w-full items-center justify-center">
-            <ResponsiveContainer width="90%" height={220}>
-              <BarChart data={barData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#40444b" />
-                <XAxis dataKey="month" stroke="#b9bbbe" />
-                <YAxis stroke="#b9bbbe" />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="income" fill="#43b581" name="Receitas" />
-                <Bar dataKey="expense" fill="#ed4245" name="Despesas" />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="flex h-[240px] w-full items-center justify-center w-full">
+            <ApexChart
+              type="bar"
+              width={380}
+              height={220}
+              series={[
+                {
+                  name: "Receitas",
+                  data: barData.map((item) => item.income),
+                },
+                {
+                  name: "Despesas",
+                  data: barData.map((item) => item.expense),
+                },
+              ]}
+              options={{
+                chart: { background: "transparent", stacked: false, toolbar: { show: false } },
+                theme: { mode: "dark" },
+                xaxis: {
+                  categories: barData.map((item) => item.month),
+                  labels: { style: { colors: "var(--foreground)" } },
+                },
+                yaxis: { labels: { style: { colors: "var(--foreground)" } } },
+                legend: { labels: { colors: "var(--foreground)" } },
+                colors: ["#43b581", "#ed4245"],
+                grid: { borderColor: "var(--surface-alt)", strokeDashArray: 4 },
+                tooltip: { theme: "dark" },
+                plotOptions: { bar: { borderRadius: 6, columnWidth: '40%' } },
+              }}
+            />
           </div>
         </div>
 

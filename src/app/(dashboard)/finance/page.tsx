@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import dynamic from "next/dynamic";
+// ApexCharts precisa ser importado dinamicamente para evitar SSR issues
+const ApexLineChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 export default function Finance() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -57,15 +59,49 @@ export default function Finance() {
         transition={{ delay: 0.4 }}
       >
         <h3 className="text-lg font-semibold mb-4 text-[var(--foreground)]">Evolução do Saldo</h3>
-        <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={balanceOverTime}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-alt)" />
-            <XAxis dataKey="date" stroke="var(--foreground)" />
-            <YAxis stroke="var(--foreground)" />
-            <Tooltip contentStyle={{ background: 'var(--surface)', color: 'var(--foreground)', border: '1px solid var(--surface-alt)' }} />
-            <Line type="monotone" dataKey="balance" stroke="var(--primary)" strokeWidth={2} />
-          </LineChart>
-        </ResponsiveContainer>
+        <div style={{ width: "100%", height: 400 }}>
+          <ApexLineChart
+            type="line"
+            height={400}
+            width="100%"
+            series={[{
+              name: "Saldo",
+              data: balanceOverTime.map((item: any) => item.balance)
+            }]}
+            options={{
+              chart: {
+                id: "saldo-evolucao",
+                background: "transparent",
+                toolbar: { show: false },
+                zoom: { enabled: false },
+              },
+              theme: {
+                mode: "dark"
+              },
+              xaxis: {
+                categories: balanceOverTime.map((item: any) => item.date),
+                labels: { style: { colors: "var(--foreground)" } },
+              },
+              yaxis: {
+                labels: { style: { colors: "var(--foreground)" } },
+              },
+              stroke: {
+                curve: "smooth",
+                width: 3,
+                colors: ["var(--primary)"]
+              },
+              colors: ["var(--primary)"],
+              grid: {
+                borderColor: "var(--surface-alt)",
+                strokeDashArray: 4,
+              },
+              tooltip: {
+                theme: "dark",
+                style: { fontFamily: "inherit" },
+              },
+            }}
+          />
+        </div>
       </motion.div>
 
       <motion.div 
