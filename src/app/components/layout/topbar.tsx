@@ -21,20 +21,19 @@ export function Topbar() {
       transition={{ duration: 0.4 }}
     >
       <span className="mr-8 select-none flex items-center gap-2">
-        {/* Logo SVG estilosa e autêntica */}
+        {/* Logo SVG: cifrão estilizado */}
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#paint0_linear)"/>
-          <path d="M10 20c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
-          <path d="M16 10v8" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
-          <circle cx="16" cy="24" r="2" fill="#fff"/>
+          <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#money_linear)"/>
+          <path d="M16 8v16" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/>
+          <path d="M12 12c0-2.21 1.79-4 4-4s4 1.79 4 4c0 2-1.5 3-4 3s-4 1-4 3c0 2.21 1.79 4 4 4s4-1.79 4-4" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/>
           <defs>
-            <linearGradient id="paint0_linear" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#7289da"/>
-              <stop offset="1" stopColor="#43e97b"/>
+            <linearGradient id="money_linear" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#43e97b"/>
+              <stop offset="1" stopColor="#38f9d7"/>
             </linearGradient>
           </defs>
         </svg>
-        <span className="text-xl font-bold text-[var(--accent)] tracking-tight">Financia</span>
+        <span className="text-xl font-bold text-[var(--accent)] tracking-tight">NotRichYet</span>
       </span>
       <div className="flex gap-4 flex-1">
         {navItems.map((item) => (
