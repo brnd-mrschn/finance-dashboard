@@ -333,10 +333,13 @@ export default function DataPage() {
                           title="Remover"
                           onClick={async () => {
                             if (!confirm("Remover transação?")) return;
-                            setLoading(true);
+                            setSaving(true);
                             await fetch(`/api/transactions/${t.id}`, { method: "DELETE" });
                             setTransactions((prev) => prev.filter((tr) => tr.id !== t.id));
-                            setLoading(false);
+                            setSaving(false);
+                            setToast('Transação removida!');
+                            if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                            toastTimeout.current = setTimeout(() => setToast(null), 1800);
                           }}
                         >
                           <FiTrash2 />
@@ -480,10 +483,13 @@ export default function DataPage() {
                           title="Remover"
                           onClick={async () => {
                             if (!confirm("Remover categoria?")) return;
-                            setLoading(true);
+                            setSaving(true);
                             await fetch(`/api/categories/${c.id}`, { method: "DELETE" });
                             setCategories((prev) => prev.filter((cat) => cat.id !== c.id));
-                            setLoading(false);
+                            setSaving(false);
+                            setToast('Categoria removida!');
+                            if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                            toastTimeout.current = setTimeout(() => setToast(null), 1800);
                           }}
                         >
                           <FiTrash2 />
