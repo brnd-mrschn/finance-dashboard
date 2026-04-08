@@ -134,7 +134,7 @@ export default function DataPage() {
                         <button
                           className="text-green-500 font-bold mr-2"
                           onClick={async () => {
-                            setLoading(true);
+                            setSaving(true);
                             const res = await fetch("/api/transactions", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
@@ -143,7 +143,10 @@ export default function DataPage() {
                             const created = await res.json();
                             setTransactions((prev) => [created, ...prev]);
                             setNewTransaction(null);
-                            setLoading(false);
+                            setSaving(false);
+                            setToast('Transação criada!');
+                            if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                            toastTimeout.current = setTimeout(() => setToast(null), 1800);
                           }}
                           title="Salvar"
                         >Salvar</button>
@@ -390,7 +393,7 @@ export default function DataPage() {
                         <button
                           className="text-green-500 font-bold mr-2"
                           onClick={async () => {
-                            setLoading(true);
+                            setSaving(true);
                             const res = await fetch("/api/categories", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
@@ -399,7 +402,10 @@ export default function DataPage() {
                             const created = await res.json();
                             setCategories((prev) => [created, ...prev]);
                             setNewCategory(null);
-                            setLoading(false);
+                            setSaving(false);
+                            setToast('Categoria criada!');
+                            if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                            toastTimeout.current = setTimeout(() => setToast(null), 1800);
                           }}
                           title="Salvar"
                         >Salvar</button>
