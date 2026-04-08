@@ -429,7 +429,7 @@ export default function DataPage() {
                             defaultValue={c.name}
                             autoFocus
                             onBlur={async (e) => {
-                              setLoading(true);
+                              setSaving(true);
                               const value = e.target.value;
                               await fetch(`/api/categories/${c.id}`, {
                                 method: "PUT",
@@ -438,7 +438,7 @@ export default function DataPage() {
                               });
                               setCategories((prev) => prev.map((cat) => cat.id === c.id ? { ...cat, name: value } : cat));
                               setEditingCategory(null);
-                              setLoading(false);
+                              setSaving(false);
                             }}
                             onKeyDown={e => {
                               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
@@ -456,7 +456,7 @@ export default function DataPage() {
                             defaultValue={c.expected ?? ""}
                             autoFocus
                             onBlur={async (e) => {
-                              setLoading(true);
+                              setSaving(true);
                               const value = parseFloat(e.target.value);
                               await fetch(`/api/categories/${c.id}`, {
                                 method: "PUT",
@@ -465,7 +465,7 @@ export default function DataPage() {
                               });
                               setCategories((prev) => prev.map((cat) => cat.id === c.id ? { ...cat, expected: value } : cat));
                               setEditingCategory(null);
-                              setLoading(false);
+                              setSaving(false);
                             }}
                             onKeyDown={e => {
                               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
