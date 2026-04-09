@@ -8,6 +8,7 @@ import dynamic from "next/dynamic";
 const ApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 import { Card } from "@/app/components/ui/card";
+import { DropdownFilter } from "@/app/components/ui/dropdown-filter";
 
 type Transaction = {
   id: string;
@@ -179,61 +180,27 @@ export default function Dashboard() {
           Dashboard
         </motion.h1>
 
+
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-end">
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--surface-alt)] bg-[var(--surface)] px-4 py-2 shadow-sm">
-            <div className="flex flex-col items-start">
-              <label className="mb-1 ml-1 text-xs font-semibold text-[var(--foreground)]">
-                Ano
-              </label>
-              <select
-                className="rounded border-none bg-transparent px-2 py-1 text-[var(--foreground)] outline-none transition-all focus:ring-2 focus:ring-[var(--primary)]"
-                value={selectedYear}
-                onChange={(event) => setSelectedYear(event.target.value)}
-              >
-                <option value="">Todos</option>
-                {uniqueYears.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col items-start">
-              <label className="mb-1 ml-1 text-xs font-semibold text-[var(--foreground)]">
-                Mês
-              </label>
-              <select
-                className="rounded border-none bg-transparent px-2 py-1 text-[var(--foreground)] outline-none transition-all focus:ring-2 focus:ring-[var(--primary)]"
-                value={selectedMonth}
-                onChange={(event) => setSelectedMonth(event.target.value)}
-              >
-                <option value="">Todos</option>
-                {uniqueMonths.map((month) => (
-                  <option key={month} value={month}>
-                    {month.toString().padStart(2, "0")}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col items-start">
-              <label className="mb-1 ml-1 text-xs font-semibold text-[var(--foreground)]">
-                Categoria
-              </label>
-              <select
-                className="rounded border-none bg-transparent px-2 py-1 text-[var(--foreground)] outline-none transition-all focus:ring-2 focus:ring-[var(--primary)]"
-                value={selectedCategory}
-                onChange={(event) => setSelectedCategory(event.target.value)}
-              >
-                <option value="">Todas</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--surface-alt)] bg-[var(--surface)] px-4 py-2 shadow-sm h-14 min-h-[56px]">
+            <DropdownFilter
+              label="Ano"
+              value={selectedYear}
+              onChange={setSelectedYear}
+              options={[{ value: "", label: "Todos" }, ...uniqueYears.map((year) => ({ value: String(year), label: String(year) }))]}
+            />
+            <DropdownFilter
+              label="Mês"
+              value={selectedMonth}
+              onChange={setSelectedMonth}
+              options={[{ value: "", label: "Todos" }, ...uniqueMonths.map((month) => ({ value: String(month), label: String(month).padStart(2, "0") }))]}
+            />
+            <DropdownFilter
+              label="Categoria"
+              value={selectedCategory}
+              onChange={setSelectedCategory}
+              options={[{ value: "", label: "Todas" }, ...categories.map((category) => ({ value: category.id, label: category.name }))]}
+            />
           </div>
 
           <div
@@ -455,15 +422,16 @@ export default function Dashboard() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.6 }}
       >
+
         <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6">
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Despesas por Categoria
           </h3>
-          <div className="flex h-[240px] w-full items-center justify-center w-full">
+          <div className="flex h-80 w-full items-center justify-center">
             <ApexChart
               type="donut"
-              width={260}
-              height={220}
+              width="100%"
+              height="100%"
               series={expenseByCategory.map((item) => item.value)}
               options={{
                 labels: expenseByCategory.map((item) => item.name),
@@ -487,12 +455,12 @@ export default function Dashboard() {
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Gastos Esperados vs Gastos Reais
           </h3>
-          <div className="flex h-[240px] w-full items-center justify-center w-full">
+          <div className="flex h-80 w-full items-center justify-center">
             <ApexChart
               type="bar"
-              width={380}
-              height={220}
-              series={[
+              width="100%"
+              height="100%"
+              series={[ 
                 {
                   name: "Esperado",
                   data: categories.map((category) => category.expected ?? 0),
@@ -531,12 +499,12 @@ export default function Dashboard() {
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Receitas vs Despesas Mensais
           </h3>
-          <div className="flex h-[240px] w-full items-center justify-center w-full">
+          <div className="flex h-80 w-full items-center justify-center">
             <ApexChart
               type="bar"
-              width={380}
-              height={220}
-              series={[
+              width="100%"
+              height="100%"
+              series={[ 
                 {
                   name: "Receitas",
                   data: barData.map((item) => item.income),
@@ -593,43 +561,43 @@ export default function Dashboard() {
       {filteredTransactions.length === 0 ? (
         <p className="text-[#b9bbbe]">Nenhuma transação encontrada</p>
       ) : (
-        <motion.div
-          className="space-y-4"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.8 }}
-        >
-          {filteredTransactions.map((transaction, index) => (
-            <motion.div
-              key={transaction.id}
-              className="flex items-center justify-between rounded-lg border border-[var(--surface-alt)] bg-[var(--surface)] p-4 transition-colors hover:bg-[var(--surface-alt)]"
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.1 * index }}
-              whileHover={{ scale: 1.01 }}
-            >
-              <div>
-                <p className="font-medium text-[var(--foreground)]">{transaction.description}</p>
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  {new Date(transaction.date).toLocaleDateString("pt-BR")} · {getCategoryName(transaction.categoryId)}
-                </p>
-              </div>
+        <div>
+          <h2 className="mb-4 text-xl font-bold text-[var(--foreground)] text-left">Gastos recentes</h2>
+          <motion.div
+            className="space-y-4"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.8 }}
+          >
+            {[...filteredTransactions]
+              .filter((t) => t.type === "EXPENSE")
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .map((transaction, index) => (
+                <motion.div
+                  key={transaction.id}
+                  className="flex items-center justify-between rounded-lg border border-[var(--surface-alt)] bg-[var(--surface)] p-4 transition-colors hover:bg-[var(--surface-alt)]"
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.1 * index }}
+                  whileHover={{ scale: 1.01 }}
+                >
+                  <div>
+                    <p className="font-medium text-[var(--foreground)]">{transaction.description}</p>
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                      {new Date(transaction.date).toLocaleDateString("pt-BR")} · {getCategoryName(transaction.categoryId)}
+                    </p>
+                  </div>
 
-              <p
-                className={
-                  transaction.type === "INCOME"
-                    ? "font-bold text-[#43b581]"
-                    : "font-bold text-[#ed4245]"
-                }
-              >
-                {transaction.amount.toLocaleString("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                })}
-              </p>
-            </motion.div>
-          ))}
-        </motion.div>
+                  <p className="font-bold text-[#ed4245]">
+                    {transaction.amount.toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    })}
+                  </p>
+                </motion.div>
+              ))}
+          </motion.div>
+        </div>
       )}
     </motion.div>
   );
