@@ -19,7 +19,14 @@ export async function POST(req: Request) {
   const body = await req.json();
 
   const transaction = await prisma.transaction.create({
-    data: body,
+    data: {
+      description: body.description,
+      date: new Date(body.date),
+      amount: parseFloat(body.amount),
+      type: body.type,
+      categoryId: body.categoryId || null,
+      userId: body.userId ?? "dev-user",
+    },
   });
 
   return NextResponse.json(transaction);

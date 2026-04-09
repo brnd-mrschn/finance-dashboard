@@ -41,6 +41,7 @@ model Category {
   group    String
   subgroup String
   type     TransactionType
+  expected Float?
 
   transactions Transaction[]
 

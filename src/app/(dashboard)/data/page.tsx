@@ -134,12 +134,40 @@ export default function DataPage() {
                         <button
                           className="text-green-500 font-bold mr-2"
                           onClick={async () => {
+                            if (!newTransaction.description.trim()) {
+                              setToast('Preencha a descrição');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              return;
+                            }
+                            if (!newTransaction.date) {
+                              setToast('Preencha a data');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              return;
+                            }
+                            if (!newTransaction.amount || parseFloat(newTransaction.amount) <= 0) {
+                              setToast('Preencha um valor maior que zero');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              return;
+                            }
                             setSaving(true);
                             const res = await fetch("/api/transactions", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify(newTransaction),
+                              body: JSON.stringify({
+                                ...newTransaction,
+                                amount: parseFloat(newTransaction.amount),
+                              }),
                             });
+                            if (!res.ok) {
+                              setSaving(false);
+                              setToast('Erro ao criar transação');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              return;
+                            }
                             const created = await res.json();
                             setTransactions((prev) => [created, ...prev]);
                             setNewTransaction(null);
@@ -358,7 +386,7 @@ export default function DataPage() {
               <h2 className="text-lg font-semibold">Categorias</h2>
               <button
                 className="flex items-center gap-2 px-3 py-1 rounded-lg bg-[var(--accent)] text-white font-semibold hover:bg-[var(--primary)] transition-colors"
-                onClick={() => setNewCategory({ name: "", expected: 0 })}
+                onClick={() => setNewCategory({ name: "", group: "", subgroup: "", type: "EXPENSE", expected: "" })}
               >
                 <FiPlus /> Nova Categoria
               </button>
@@ -368,6 +396,9 @@ export default function DataPage() {
                 <thead>
                   <tr className="bg-[var(--surface-alt)]">
                     <th className="px-3 py-2">Nome</th>
+                    <th className="px-3 py-2">Grupo</th>
+                    <th className="px-3 py-2">Subgrupo</th>
+                    <th className="px-3 py-2">Tipo</th>
                     <th className="px-3 py-2">Esperado</th>
                   </tr>
                 </thead>
@@ -379,9 +410,35 @@ export default function DataPage() {
                           className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
                           value={newCategory.name}
                           onChange={e => setNewCategory((nc: any) => ({ ...nc, name: e.target.value }))}
-                          placeholder="Nome da categoria"
+                          placeholder="Nome"
                           autoFocus
                         />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          value={newCategory.group}
+                          onChange={e => setNewCategory((nc: any) => ({ ...nc, group: e.target.value }))}
+                          placeholder="Grupo"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          value={newCategory.subgroup}
+                          onChange={e => setNewCategory((nc: any) => ({ ...nc, subgroup: e.target.value }))}
+                          placeholder="Subgrupo"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <select
+                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          value={newCategory.type}
+                          onChange={e => setNewCategory((nc: any) => ({ ...nc, type: e.target.value }))}
+                        >
+                          <option value="EXPENSE">Despesa</option>
+                          <option value="INCOME">Receita</option>
+                        </select>
                       </td>
                       <td className="px-3 py-2">
                         <input
@@ -396,12 +453,37 @@ export default function DataPage() {
                         <button
                           className="text-green-500 font-bold mr-2"
                           onClick={async () => {
+                            if (!newCategory.name.trim()) {
+                              setToast('Preencha o nome');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              return;
+                            }
+                            if (!newCategory.group.trim()) {
+                              setToast('Preencha o grupo');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              return;
+                            }
+                            if (!newCategory.subgroup.trim()) {
+                              setToast('Preencha o subgrupo');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              return;
+                            }
                             setSaving(true);
                             const res = await fetch("/api/categories", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify(newCategory),
                             });
+                            if (!res.ok) {
+                              setSaving(false);
+                              setToast('Erro ao criar categoria');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              return;
+                            }
                             const created = await res.json();
                             setCategories((prev) => [created, ...prev]);
                             setNewCategory(null);
@@ -423,7 +505,7 @@ export default function DataPage() {
                   {categories.map((c) => (
                     <tr key={c.id} className="border-b border-[var(--surface-alt)] hover:bg-[var(--surface-alt)]">
                       <td className="px-3 py-2">
-                        {editingCategory === c.id ? (
+                        {editingCategory === c.id && editingField === 'name' ? (
                           <input
                             className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
                             defaultValue={c.name}
@@ -438,18 +520,115 @@ export default function DataPage() {
                               });
                               setCategories((prev) => prev.map((cat) => cat.id === c.id ? { ...cat, name: value } : cat));
                               setEditingCategory(null);
+                              setEditingField(null);
                               setSaving(false);
+                              setToast('Categoria atualizada!');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
                             }}
                             onKeyDown={e => {
                               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                             }}
                           />
                         ) : (
-                          <span onClick={() => setEditingCategory(c.id)} className="cursor-pointer hover:underline">{c.name}</span>
+                          <span onClick={() => { setEditingCategory(c.id); setEditingField('name'); }} className="cursor-pointer hover:underline">{c.name}</span>
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        {editingCategory === c.id ? (
+                        {editingCategory === c.id && editingField === 'group' ? (
+                          <input
+                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            defaultValue={c.group}
+                            autoFocus
+                            onBlur={async (e) => {
+                              setSaving(true);
+                              const value = e.target.value;
+                              await fetch(`/api/categories/${c.id}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ ...c, group: value })
+                              });
+                              setCategories((prev) => prev.map((cat) => cat.id === c.id ? { ...cat, group: value } : cat));
+                              setEditingCategory(null);
+                              setEditingField(null);
+                              setSaving(false);
+                              setToast('Categoria atualizada!');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                            }}
+                            onKeyDown={e => {
+                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                            }}
+                          />
+                        ) : (
+                          <span onClick={() => { setEditingCategory(c.id); setEditingField('group'); }} className="cursor-pointer hover:underline">{c.group}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {editingCategory === c.id && editingField === 'subgroup' ? (
+                          <input
+                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            defaultValue={c.subgroup}
+                            autoFocus
+                            onBlur={async (e) => {
+                              setSaving(true);
+                              const value = e.target.value;
+                              await fetch(`/api/categories/${c.id}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ ...c, subgroup: value })
+                              });
+                              setCategories((prev) => prev.map((cat) => cat.id === c.id ? { ...cat, subgroup: value } : cat));
+                              setEditingCategory(null);
+                              setEditingField(null);
+                              setSaving(false);
+                              setToast('Categoria atualizada!');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                            }}
+                            onKeyDown={e => {
+                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                            }}
+                          />
+                        ) : (
+                          <span onClick={() => { setEditingCategory(c.id); setEditingField('subgroup'); }} className="cursor-pointer hover:underline">{c.subgroup}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {editingCategory === c.id && editingField === 'type' ? (
+                          <select
+                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            defaultValue={c.type}
+                            autoFocus
+                            onBlur={async (e) => {
+                              setSaving(true);
+                              const value = e.target.value;
+                              await fetch(`/api/categories/${c.id}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ ...c, type: value })
+                              });
+                              setCategories((prev) => prev.map((cat) => cat.id === c.id ? { ...cat, type: value } : cat));
+                              setEditingCategory(null);
+                              setEditingField(null);
+                              setSaving(false);
+                              setToast('Categoria atualizada!');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                            }}
+                            onKeyDown={e => {
+                              if (e.key === "Enter") (e.target as HTMLSelectElement).blur();
+                            }}
+                          >
+                            <option value="EXPENSE">Despesa</option>
+                            <option value="INCOME">Receita</option>
+                          </select>
+                        ) : (
+                          <span onClick={() => { setEditingCategory(c.id); setEditingField('type'); }} className="cursor-pointer hover:underline">{c.type === "INCOME" ? "Receita" : "Despesa"}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {editingCategory === c.id && editingField === 'expected' ? (
                           <input
                             type="number"
                             className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
@@ -457,7 +636,7 @@ export default function DataPage() {
                             autoFocus
                             onBlur={async (e) => {
                               setSaving(true);
-                              const value = parseFloat(e.target.value);
+                              const value = e.target.value ? parseFloat(e.target.value) : null;
                               await fetch(`/api/categories/${c.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
@@ -465,14 +644,18 @@ export default function DataPage() {
                               });
                               setCategories((prev) => prev.map((cat) => cat.id === c.id ? { ...cat, expected: value } : cat));
                               setEditingCategory(null);
+                              setEditingField(null);
                               setSaving(false);
+                              setToast('Categoria atualizada!');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
                             }}
                             onKeyDown={e => {
                               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                             }}
                           />
                         ) : (
-                          <span onClick={() => setEditingCategory(c.id)} className="cursor-pointer hover:underline">
+                          <span onClick={() => { setEditingCategory(c.id); setEditingField('expected'); }} className="cursor-pointer hover:underline">
                             {c.expected?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) || <span className="italic text-gray-400">-</span>}
                           </span>
                         )}

@@ -12,3 +12,21 @@ export async function GET() {
 
   return NextResponse.json(categories);
 }
+
+export async function POST(req: Request) {
+  const { prisma } = await import("@/lib/db");
+
+  const body = await req.json();
+
+  const category = await prisma.category.create({
+    data: {
+      name: body.name,
+      group: body.group,
+      subgroup: body.subgroup,
+      type: body.type,
+      expected: body.expected ? parseFloat(body.expected) : null,
+    },
+  });
+
+  return NextResponse.json(category);
+}
