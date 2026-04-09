@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { FiSearch, FiX } from "react-icons/fi";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -34,6 +34,24 @@ export default function Dashboard() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Fecha a busca ao clicar fora se estiver vazia
+  useEffect(() => {
+    if (!searchOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node) &&
+        searchTerm.trim() === ""
+      ) {
+        setSearchOpen(false);
+        setSearchTerm("");
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [searchOpen, searchTerm]);
   const [showModal, setShowModal] = useState(false);
   const [searchResults, setSearchResults] = useState<Transaction[]>([]);
 
@@ -204,8 +222,9 @@ export default function Dashboard() {
           </div>
 
           <div
+            ref={searchRef}
             className={`relative flex h-14 items-center rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] shadow-sm transition-[width] duration-300 ${
-              searchOpen ? "w-full lg:w-[28rem]" : "w-14"
+              searchOpen ? "w-full lg:w-[23rem]" : "w-14"
             }`}
           >
             <button
@@ -259,7 +278,7 @@ export default function Dashboard() {
 
                 {searchTerm.trim() && (
                   <div className="absolute left-0 top-[calc(100%+0.75rem)] z-30 w-full rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-3 shadow-2xl">
-                    <div className="mb-2 flex items-center justify-between px-1 text-xs text-[var(--muted-foreground)]">
+                    <div className="mb-2 flex items-center justify-between px-1 text-xs text-[var(--muted-foreground)] opacity-40">
                       <span>{liveSearchResults.length} resultado(s)</span>
                       <span>Enter abre todos</span>
                     </div>
@@ -418,20 +437,22 @@ export default function Dashboard() {
 
       <motion.div
         className="mb-10 grid grid-cols-1 gap-8 md:grid-cols-2"
+        style={{ gridTemplateColumns: '1fr 1fr' }}
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.6 }}
       >
 
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6">
+        <div className="flex flex-col rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6 h-[420px]">
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Despesas por Categoria
           </h3>
-          <div className="flex h-80 w-full items-center justify-center">
+          <div className="relative flex-1 w-full h-full" style={{ minHeight: 0, minWidth: 0 }}>
             <ApexChart
               type="donut"
               width="100%"
               height="100%"
+              style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
               series={expenseByCategory.map((item) => item.value)}
               options={{
                 labels: expenseByCategory.map((item) => item.name),
@@ -451,15 +472,16 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6">
+        <div className="flex flex-col rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6 h-[420px]">
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Gastos Esperados vs Gastos Reais
           </h3>
-          <div className="flex h-80 w-full items-center justify-center">
+          <div className="relative flex-1 w-full h-full" style={{ minHeight: 0, minWidth: 0 }}>
             <ApexChart
               type="bar"
               width="100%"
               height="100%"
+              style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
               series={[ 
                 {
                   name: "Esperado",
@@ -482,28 +504,37 @@ export default function Dashboard() {
                 theme: { mode: "dark" },
                 xaxis: {
                   categories: categories.map((category) => category.name),
-                  labels: { style: { colors: "var(--foreground)" } },
+                  labels: {
+                    style: { colors: "var(--foreground)", fontSize: '10px' },
+                    rotate: -45,
+                    trim: true,
+                    hideOverlappingLabels: true,
+                    showDuplicates: false,
+                    maxHeight: 60,
+                  },
+                  tickPlacement: 'on',
                 },
                 yaxis: { labels: { style: { colors: "var(--foreground)" } } },
                 legend: { labels: { colors: "var(--foreground)" } },
                 colors: ["#b9bbbe", "#ed4245"],
                 grid: { borderColor: "var(--surface-alt)", strokeDashArray: 4 },
                 tooltip: { theme: "dark" },
-                plotOptions: { bar: { borderRadius: 6, columnWidth: '40%' } },
+                plotOptions: { bar: { borderRadius: 6, columnWidth: '55%', barHeight: '80%' } },
               }}
             />
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6">
+        <div className="flex flex-col rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6 h-[420px]">
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Receitas vs Despesas Mensais
           </h3>
-          <div className="flex h-80 w-full items-center justify-center">
+          <div className="relative flex-1 w-full h-full" style={{ minHeight: 0, minWidth: 0 }}>
             <ApexChart
               type="bar"
               width="100%"
               height="100%"
+              style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
               series={[ 
                 {
                   name: "Receitas",
@@ -532,15 +563,15 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="min-h-[320px] rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6">
+        <div className="min-h-[320px] h-[420px] rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6 flex flex-col">
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Gastos por Categoria
           </h3>
-          <ul className="max-h-48 space-y-2 overflow-y-auto">
+          <ul className="flex-1 overflow-y-auto space-y-1">
             {categories.map((category) => (
               <li key={category.id} className="flex justify-between text-[var(--foreground)]">
                 <span>{category.name}</span>
-                <span>
+                <span className="pr-6">
                   {filteredTransactions
                     .filter(
                       (transaction) =>
