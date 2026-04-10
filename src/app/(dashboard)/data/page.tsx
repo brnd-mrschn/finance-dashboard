@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 export default function DataPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [origins, setOrigins] = useState<any[]>([]);
   const [error, setError] = useState("");
   const [editingTransaction, setEditingTransaction] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
@@ -27,6 +28,10 @@ export default function DataPage() {
       .then((res) => res.json())
       .then(setCategories)
       .catch(() => setError("Erro ao carregar categorias"));
+    fetch("/api/origins")
+      .then((res) => res.json())
+      .then(setOrigins)
+      .catch(() => setError("Erro ao carregar origens"));
   }, []);
 
   return (
@@ -47,23 +52,23 @@ export default function DataPage() {
       </motion.h1>
       <div className="flex gap-4 mb-8">
         <button
-          className={`px-4 py-2 rounded-lg font-semibold transition-colors ${view === 'transactions' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface-alt)] text-[var(--foreground)]'}`}
+          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'transactions' ? 'bg-[var(--surface-alt)] text-[var(--foreground)]' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-alt)]'}`}
           onClick={() => setView('transactions')}
         >Transações</button>
         <button
-          className={`px-4 py-2 rounded-lg font-semibold transition-colors ${view === 'categories' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface-alt)] text-[var(--foreground)]'}`}
+          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'categories' ? 'bg-[var(--surface-alt)] text-[var(--foreground)]' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-alt)]'}`}
           onClick={() => setView('categories')}
         >Categorias</button>
       </div>
       {error && <p className="text-[#ed4245]">{error}</p>}
       <div>
         {view === 'transactions' && (
-          <div className="bg-[var(--surface)] p-6 rounded-2xl border border-[var(--surface-alt)]">
+          <div className="bg-[var(--surface)] p-6 rounded-lg border border-[var(--border)]">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Transações</h2>
+              <h2 className="text-sm font-medium text-[var(--foreground)]">Transações</h2>
               <button
-                className="flex items-center gap-2 px-3 py-1 rounded-lg bg-[var(--accent)] text-white font-semibold hover:bg-[var(--primary)] transition-colors"
-                onClick={() => setNewTransaction({ description: "", date: new Date().toISOString().slice(0,10), amount: 0, type: "EXPENSE", categoryId: "" })}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--primary)] text-white text-xs font-medium hover:bg-[var(--primary-dark)] transition-colors"
+                onClick={() => setNewTransaction({ description: "", date: new Date().toISOString().slice(0,10), amount: 0, type: "EXPENSE", categoryId: "", originId: "" })}
               >
                 <FiPlus /> Nova Transação
               </button>
@@ -77,11 +82,12 @@ export default function DataPage() {
                     <th className="px-3 py-2">Valor</th>
                     <th className="px-3 py-2">Tipo</th>
                     <th className="px-3 py-2">Categoria</th>
+                    <th className="px-3 py-2">Origem</th>
                   </tr>
                 </thead>
                 <tbody>
                   {newTransaction && (
-                    <tr className="border-b border-[var(--surface-alt)] bg-[var(--surface-alt)]">
+                    <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
                       <td className="px-3 py-2">
                         <input
                           className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
@@ -130,9 +136,21 @@ export default function DataPage() {
                           ))}
                         </select>
                       </td>
+                      <td className="px-3 py-2">
+                        <select
+                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          value={newTransaction.originId}
+                          onChange={e => setNewTransaction((nt: any) => ({ ...nt, originId: e.target.value }))}
+                        >
+                          <option value="">Sem origem</option>
+                          {origins.map((o) => (
+                            <option key={o.id} value={o.id}>{o.name}</option>
+                          ))}
+                        </select>
+                      </td>
                       <td className="px-3 py-2 text-right">
                         <button
-                          className="text-green-500 font-bold mr-2"
+                          className="px-2.5 py-1 rounded-md bg-[var(--primary)] text-white text-xs font-medium hover:bg-[var(--primary-dark)] transition-colors mr-2"
                           onClick={async () => {
                             if (!newTransaction.description.trim()) {
                               setToast('Preencha a descrição');
@@ -179,7 +197,7 @@ export default function DataPage() {
                           title="Salvar"
                         >Salvar</button>
                         <button
-                          className="text-red-500 font-bold"
+                          className="px-2.5 py-1 rounded-md border border-[var(--border)] text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted)] transition-colors"
                           onClick={() => setNewTransaction(null)}
                           title="Cancelar"
                         >Cancelar</button>
@@ -187,7 +205,7 @@ export default function DataPage() {
                     </tr>
                   )}
                   {transactions.map((t) => (
-                    <tr key={t.id} className="border-b border-[var(--surface-alt)] hover:bg-[var(--surface-alt)]">
+                    <tr key={t.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-alt)]">
                       {/* Descrição */}
                       <td className="px-3 py-2">
                         {editingTransaction === t.id && editingField === 'description' ? (
@@ -355,6 +373,44 @@ export default function DataPage() {
                           </span>
                         )}
                       </td>
+                      {/* Origem */}
+                      <td className="px-3 py-2">
+                        {editingTransaction === t.id && editingField === 'originId' ? (
+                          <select
+                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            defaultValue={t.originId || ""}
+                            autoFocus
+                            onBlur={async (e) => {
+                              setSaving(true);
+                              const value = e.target.value;
+                              await fetch(`/api/transactions/${t.id}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ ...t, originId: value || null }),
+                              });
+                              setTransactions((prev) => prev.map((tr) => tr.id === t.id ? { ...tr, originId: value || null } : tr));
+                              setEditingTransaction(null);
+                              setEditingField(null);
+                              setSaving(false);
+                              setToast('Transação atualizada!');
+                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                            }}
+                            onKeyDown={e => {
+                              if (e.key === "Enter") (e.target as HTMLSelectElement).blur();
+                            }}
+                          >
+                            <option value="">Sem origem</option>
+                            {origins.map((o) => (
+                              <option key={o.id} value={o.id}>{o.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span onClick={() => { setEditingTransaction(t.id); setEditingField('originId'); }} className="cursor-pointer hover:underline">
+                            {origins.find((o) => o.id === t.originId)?.name || <span className="italic text-gray-400">-</span>}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-right">
                         <button
                           className="text-red-500 hover:text-red-700"
@@ -381,11 +437,11 @@ export default function DataPage() {
           </div>
         )}
         {view === 'categories' && (
-          <div className="bg-[var(--surface)] p-6 rounded-2xl border border-[var(--surface-alt)]">
+          <div className="bg-[var(--surface)] p-6 rounded-lg border border-[var(--border)]">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Categorias</h2>
+              <h2 className="text-sm font-medium text-[var(--foreground)]">Categorias</h2>
               <button
-                className="flex items-center gap-2 px-3 py-1 rounded-lg bg-[var(--accent)] text-white font-semibold hover:bg-[var(--primary)] transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--primary)] text-white text-xs font-medium hover:bg-[var(--primary-dark)] transition-colors"
                 onClick={() => setNewCategory({ name: "", group: "", subgroup: "", type: "EXPENSE", expected: "" })}
               >
                 <FiPlus /> Nova Categoria
@@ -404,7 +460,7 @@ export default function DataPage() {
                 </thead>
                 <tbody>
                   {newCategory && (
-                    <tr className="border-b border-[var(--surface-alt)] bg-[var(--surface-alt)]">
+                    <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
                       <td className="px-3 py-2">
                         <input
                           className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
@@ -451,7 +507,7 @@ export default function DataPage() {
                       </td>
                       <td className="px-3 py-2 text-right">
                         <button
-                          className="text-green-500 font-bold mr-2"
+                          className="px-2.5 py-1 rounded-md bg-[var(--primary)] text-white text-xs font-medium hover:bg-[var(--primary-dark)] transition-colors mr-2"
                           onClick={async () => {
                             if (!newCategory.name.trim()) {
                               setToast('Preencha o nome');
@@ -495,7 +551,7 @@ export default function DataPage() {
                           title="Salvar"
                         >Salvar</button>
                         <button
-                          className="text-red-500 font-bold"
+                          className="px-2.5 py-1 rounded-md border border-[var(--border)] text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted)] transition-colors"
                           onClick={() => setNewCategory(null)}
                           title="Cancelar"
                         >Cancelar</button>
@@ -503,7 +559,7 @@ export default function DataPage() {
                     </tr>
                   )}
                   {categories.map((c) => (
-                    <tr key={c.id} className="border-b border-[var(--surface-alt)] hover:bg-[var(--surface-alt)]">
+                    <tr key={c.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-alt)]">
                       <td className="px-3 py-2">
                         {editingCategory === c.id && editingField === 'name' ? (
                           <input
@@ -688,7 +744,7 @@ export default function DataPage() {
       </div>
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <span className="bg-[var(--surface)] border border-[var(--surface-alt)] px-6 py-3 rounded-xl text-[var(--accent)] font-bold shadow-lg animate-fade-in-out">
+          <span className="bg-[var(--surface)] border border-[var(--border)] px-4 py-2.5 rounded-md text-[var(--foreground)] text-sm font-medium shadow-lg">
             {toast}
           </span>
         </div>

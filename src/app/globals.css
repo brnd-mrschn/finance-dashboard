@@ -15,51 +15,58 @@ html.dark select, html.dark select option {
 @import "tailwindcss";
 
 html.light {
-  --background: #f2f3f5;
-  --foreground: #23272a;
-  --primary: #5865f2;
-  --primary-dark: #4752c4;
-  --accent: #7289da;
-  --surface: #fff;
-  --surface-alt: #e3e5e8;
+  --background: #f8f8f8;
+  --foreground: #171717;
+  --primary: #3ecf8e;
+  --primary-dark: #38b27a;
+  --accent: #3ecf8e;
+  --surface: #ffffff;
+  --surface-alt: #efefef;
+  --border: #e0e0e0;
+  --muted: #a0a0a0;
+  --muted-foreground: #6b6b6b;
   --danger: #ed4245;
-  --success: #43b581;
+  --success: #3ecf8e;
 }
 
-
 :root {
-  --background: #313338;
-  --foreground: #f2f3f5;
-  --primary: #5865f2;
-  --primary-dark: #4752c4;
-  --accent: #7289da;
-  --surface: #23272a;
-  --surface-alt: #2c2f33;
+  --background: #171717;
+  --foreground: #ededed;
+  --primary: #3ecf8e;
+  --primary-dark: #38b27a;
+  --accent: #3ecf8e;
+  --surface: #1c1c1c;
+  --surface-alt: #252525;
+  --border: #2e2e2e;
+  --muted: #666;
+  --muted-foreground: #888;
   --danger: #ed4245;
-  --success: #43b581;
-  --font-sans: 'Inter', 'gg sans', 'Segoe UI', Arial, sans-serif;
+  --success: #3ecf8e;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  transition: background 0.3s, color 0.3s;
+  transition: background 0.2s, color 0.2s;
 }
 
-  /* Removido bloco solto inválido */
 ::-webkit-scrollbar {
-  width: 8px;
-  background: #22272b;
+  width: 6px;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #888c91;
-  border-radius: 4px;
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 html.light ::-webkit-scrollbar {
-  background: #e3e5e8;
+  background: transparent;
 }
 html.light ::-webkit-scrollbar-thumb {
-  background: #bfc2c7;
+  background: #ccc;
 }

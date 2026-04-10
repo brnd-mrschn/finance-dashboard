@@ -15,32 +15,29 @@ export function Topbar() {
   const pathname = usePathname();
   return (
     <motion.nav
-      className="w-full flex items-center h-16 px-6 bg-[var(--surface)] border-b border-[var(--surface-alt)] shadow-sm z-10"
+      className="w-full flex items-center h-14 px-5 bg-[var(--surface)] border-b border-[var(--border)] z-10"
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.3 }}
     >
-      <span className="mr-8 select-none flex items-center gap-2">
-        {/* Logo SVG: cifrão estilizado */}
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#money_linear)"/>
-          <path d="M16 8v16" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/>
-          <path d="M12 12c0-2.21 1.79-4 4-4s4 1.79 4 4c0 2-1.5 3-4 3s-4 1-4 3c0 2.21 1.79 4 4 4s4-1.79 4-4" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/>
+      <span className="mr-3 select-none flex items-center gap-2">
+        {/* Logo SVG: símbolo Euro */}
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#euro_linear)"/>
+          <text x="16" y="22.5" textAnchor="middle" fill="#fff" fontSize="18" fontWeight="bold" fontFamily="sans-serif">€</text>
           <defs>
-            <linearGradient id="money_linear" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#43e97b"/>
-              <stop offset="1" stopColor="#38f9d7"/>
+            <linearGradient id="euro_linear" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#3ecf8e"/>
+              <stop offset="1" stopColor="#2ba86c"/>
             </linearGradient>
           </defs>
         </svg>
-        <span className="text-xl font-bold text-[var(--accent)] tracking-tight">NotRichYet</span>
       </span>
-      <div className="flex gap-4 flex-1">
+      <div className="flex gap-1 flex-1">
         {navItems.map((item) => (
           <Link key={item.href} href={item.href} tabIndex={-1} className="focus:outline-none">
             <motion.span
-              className={`px-3 py-1 rounded-md font-medium text-[var(--foreground)] hover:bg-[var(--surface-alt)] transition-colors ${pathname === item.href ? "bg-[var(--primary)] text-[var(--foreground)]" : ""}`}
-              whileHover={{ scale: 1.08 }}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${pathname === item.href ? "bg-[var(--surface-alt)] text-[var(--foreground)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-alt)]"}`}
               whileTap={{ scale: 0.97 }}
             >
               {item.label}

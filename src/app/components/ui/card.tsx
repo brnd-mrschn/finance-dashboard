@@ -12,28 +12,20 @@ type CardProps = {
 
 const typeColors = {
   default: {
-    bg: "bg-[var(--surface)]",
-    border: "border-[var(--surface-alt)]",
-    text: "text-[var(--foreground)]",
-    accent: "text-[#7289da]",
+    border: "border-[var(--border)]",
+    accent: "text-[var(--muted-foreground)]",
   },
   success: {
-    bg: "bg-[var(--surface)]",
-    border: "border-[#43b581]",
-    text: "text-[var(--foreground)]",
-    accent: "text-[#43b581]",
+    border: "border-[var(--border)]",
+    accent: "text-[#3ecf8e]",
   },
   danger: {
-    bg: "bg-[var(--surface)]",
-    border: "border-[#ed4245]",
-    text: "text-[var(--foreground)]",
+    border: "border-[var(--border)]",
     accent: "text-[#ed4245]",
   },
   info: {
-    bg: "bg-[var(--surface)]",
-    border: "border-[#7289da]",
-    text: "text-[var(--foreground)]",
-    accent: "text-[#7289da]",
+    border: "border-[var(--border)]",
+    accent: "text-[var(--muted-foreground)]",
   },
 };
 
@@ -41,15 +33,15 @@ export function Card({ title, value, icon, type = "default" }: CardProps) {
   const colors = typeColors[type];
   return (
     <motion.div
-      className={`relative ${colors.bg} p-6 rounded-2xl shadow-md border ${colors.border} hover:shadow-lg transition-all flex flex-col gap-2 min-w-[180px]`}
-      whileHover={{ scale: 1.04, boxShadow: "0 4px 32px #5865f233" }}
-      transition={{ type: "spring", stiffness: 120, damping: 14 }}
+      className={`bg-[var(--surface)] p-5 rounded-lg border ${colors.border} flex flex-col gap-1.5 min-w-[180px]`}
+      whileHover={{ borderColor: "var(--muted)" }}
+      transition={{ duration: 0.15 }}
     >
-      <div className="flex items-center gap-2 mb-1">
-        {icon && <span className={`text-2xl ${colors.accent}`}>{icon}</span>}
-        <p className="text-[#b9bbbe] text-sm mb-1">{title}</p>
+      <div className="flex items-center gap-2">
+        {icon && <span className={`text-lg ${colors.accent}`}>{icon}</span>}
+        <p className="text-[var(--muted-foreground)] text-xs font-medium uppercase tracking-wide">{title}</p>
       </div>
-      <h2 className={`text-3xl font-bold ${colors.text}`}>{value}</h2>
+      <h2 className="text-2xl font-semibold text-[var(--foreground)]">{value}</h2>
     </motion.div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { FiSearch, FiX } from "react-icons/fi";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -8,6 +8,45 @@ import dynamic from "next/dynamic";
 const ApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 import { Card } from "@/app/components/ui/card";
+
+function ShineCard({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ x: -100, y: -100 });
+  const [hovering, setHovering] = useState(false);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => { setHovering(false); setPos({ x: -100, y: -100 }); }}
+      className="relative overflow-hidden rounded-lg"
+    >
+      {children}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-lg transition-opacity duration-300"
+        style={{
+          opacity: hovering ? 1 : 0,
+          background: `radial-gradient(320px circle at ${pos.x}px ${pos.y}px, rgba(255,255,255,0.06) 0%, transparent 70%)`,
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 rounded-lg transition-opacity duration-300"
+        style={{
+          opacity: hovering ? 1 : 0,
+          boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.08)`,
+        }}
+      />
+    </div>
+  );
+}
 import { DropdownFilter } from "@/app/components/ui/dropdown-filter";
 
 type Transaction = {
@@ -200,7 +239,7 @@ export default function Dashboard() {
 
 
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-end">
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--surface-alt)] bg-[var(--surface)] px-4 py-2 shadow-sm h-14 min-h-[56px]">
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 shadow-sm h-14 min-h-[56px]">
             <DropdownFilter
               label="Ano"
               value={selectedYear}
@@ -223,7 +262,7 @@ export default function Dashboard() {
 
           <div
             ref={searchRef}
-            className={`relative flex h-14 items-center rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] shadow-sm transition-[width] duration-300 ${
+            className={`relative flex h-14 items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-sm transition-[width] duration-300 ${
               searchOpen ? "w-full lg:w-[23rem]" : "w-14"
             }`}
           >
@@ -277,7 +316,7 @@ export default function Dashboard() {
                 )}
 
                 {searchTerm.trim() && (
-                  <div className="absolute left-0 top-[calc(100%+0.75rem)] z-30 w-full rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-3 shadow-2xl">
+                  <div className="absolute left-0 top-[calc(100%+0.75rem)] z-30 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-lg">
                     <div className="mb-2 flex items-center justify-between px-1 text-xs text-[var(--muted-foreground)] opacity-40">
                       <span>{liveSearchResults.length} resultado(s)</span>
                       <span>Enter abre todos</span>
@@ -293,7 +332,7 @@ export default function Dashboard() {
                           <button
                             key={transaction.id}
                             type="button"
-                            className="flex w-full items-center justify-between rounded-xl border border-[var(--surface-alt)] px-3 py-2 text-left transition-colors hover:bg-[var(--surface-alt)]"
+                            className="flex w-full items-center justify-between rounded-md border border-[var(--border)] px-3 py-2 text-left transition-colors hover:bg-[var(--surface-alt)]"
                             onClick={() => runSearch(searchTerm)}
                           >
                             <div>
@@ -330,7 +369,7 @@ export default function Dashboard() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="relative max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6 shadow-2xl md:p-8">
+          <div className="relative max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 shadow-lg md:p-8">
             <button
               type="button"
               className="absolute right-4 top-4 rounded-full p-2 text-[var(--foreground)] transition-colors hover:bg-[var(--surface-alt)]"
@@ -349,7 +388,7 @@ export default function Dashboard() {
             </div>
 
             {searchResults.length === 0 ? (
-              <div className="rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface-alt)] px-4 py-8 text-center text-[var(--foreground)]">
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-8 text-center text-[var(--foreground)]">
                 Nenhum resultado encontrado.
               </div>
             ) : (
@@ -357,7 +396,7 @@ export default function Dashboard() {
                 {searchResults.map((transaction) => (
                   <div
                     key={transaction.id}
-                    className="flex flex-col gap-4 rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface-alt)] p-4 md:flex-row md:items-center md:justify-between"
+                    className="flex flex-col gap-4 rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] p-4 md:flex-row md:items-center md:justify-between"
                   >
                     <div>
                       <p className="text-base font-semibold text-[var(--foreground)]">
@@ -396,7 +435,7 @@ export default function Dashboard() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4 }}
       >
-        <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 200, damping: 16 }}>
+        <ShineCard>
           <Card
             title="Saldo"
             value={balance.toLocaleString("pt-BR", {
@@ -406,9 +445,9 @@ export default function Dashboard() {
             icon={<span role="img" aria-label="Saldo">💰</span>}
             type={balance >= 0 ? "success" : "danger"}
           />
-        </motion.div>
+        </ShineCard>
 
-        <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 200, damping: 16 }}>
+        <ShineCard>
           <Card
             title="Receitas"
             value={income.toLocaleString("pt-BR", {
@@ -418,9 +457,9 @@ export default function Dashboard() {
             icon={<span role="img" aria-label="Receitas">🟢</span>}
             type="success"
           />
-        </motion.div>
+        </ShineCard>
 
-        <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 200, damping: 16 }}>
+        <ShineCard>
           <Card
             title="Despesas"
             value={expense.toLocaleString("pt-BR", {
@@ -430,7 +469,7 @@ export default function Dashboard() {
             icon={<span role="img" aria-label="Despesas">🔴</span>}
             type="danger"
           />
-        </motion.div>
+        </ShineCard>
       </motion.div>
 
       {error && <p className="text-[#ed4245]">{error}</p>}
@@ -443,7 +482,7 @@ export default function Dashboard() {
         transition={{ delay: 0.6 }}
       >
 
-        <div className="flex flex-col rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6 h-[420px]">
+        <div className="flex flex-col rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 h-[420px]">
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Despesas por Categoria
           </h3>
@@ -472,7 +511,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="flex flex-col rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6 h-[420px]">
+        <div className="flex flex-col rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 h-[420px]">
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Gastos Esperados vs Gastos Reais
           </h3>
@@ -516,8 +555,8 @@ export default function Dashboard() {
                 },
                 yaxis: { labels: { style: { colors: "var(--foreground)" } } },
                 legend: { labels: { colors: "var(--foreground)" } },
-                colors: ["#b9bbbe", "#ed4245"],
-                grid: { borderColor: "var(--surface-alt)", strokeDashArray: 4 },
+                colors: ["#666666", "#ed4245"],
+                grid: { borderColor: "#2e2e2e", strokeDashArray: 4 },
                 tooltip: { theme: "dark" },
                 plotOptions: { bar: { borderRadius: 6, columnWidth: '55%', barHeight: '80%' } },
               }}
@@ -525,7 +564,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="flex flex-col rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6 h-[420px]">
+        <div className="flex flex-col rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 h-[420px]">
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Receitas vs Despesas Mensais
           </h3>
@@ -555,7 +594,7 @@ export default function Dashboard() {
                 yaxis: { labels: { style: { colors: "var(--foreground)" } } },
                 legend: { labels: { colors: "var(--foreground)" } },
                 colors: ["#43b581", "#ed4245"],
-                grid: { borderColor: "var(--surface-alt)", strokeDashArray: 4 },
+                grid: { borderColor: "#2e2e2e", strokeDashArray: 4 },
                 tooltip: { theme: "dark" },
                 plotOptions: { bar: { borderRadius: 6, columnWidth: '40%' } },
               }}
@@ -563,7 +602,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="min-h-[320px] h-[420px] rounded-2xl border border-[var(--surface-alt)] bg-[var(--surface)] p-6 flex flex-col">
+        <div className="min-h-[320px] h-[420px] rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 flex flex-col">
           <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
             Gastos por Categoria
           </h3>
@@ -590,7 +629,7 @@ export default function Dashboard() {
       </motion.div>
 
       {filteredTransactions.length === 0 ? (
-        <p className="text-[#b9bbbe]">Nenhuma transação encontrada</p>
+        <p className="text-[var(--muted)]">Nenhuma transação encontrada</p>
       ) : (
         <div>
           <h2 className="mb-4 text-xl font-bold text-[var(--foreground)] text-left">Gastos recentes</h2>
@@ -606,7 +645,7 @@ export default function Dashboard() {
               .map((transaction, index) => (
                 <motion.div
                   key={transaction.id}
-                  className="flex items-center justify-between rounded-lg border border-[var(--surface-alt)] bg-[var(--surface)] p-4 transition-colors hover:bg-[var(--surface-alt)]"
+                  className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:bg-[var(--surface-alt)]"
                   initial={{ x: -20, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.1 * index }}

@@ -20,33 +20,33 @@ export function DropdownFilter({ label, value, options, onChange, className = ""
 
   return (
     <div className={`flex flex-col items-center justify-center h-full ${className}`}>
-      <span className="mb-0 text-xs font-semibold text-[var(--foreground)] leading-none">{label}</span>
+      <span className="mb-0.5 text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] leading-none">{label}</span>
       <Listbox value={value} onChange={onChange}>
         {({ open }) => (
           <div className="relative w-28">
-            <Listbox.Button className="flex w-full h-9 items-center justify-between rounded border-none bg-transparent px-2 text-[var(--foreground)] outline-none transition-all focus:ring-2 focus:ring-[var(--primary)] shadow-sm border border-[var(--surface-alt)]">
-              <span className="truncate text-left text-sm">{selected?.label}</span>
-              <FiChevronDown className="ml-2 text-lg" />
+            <Listbox.Button className="flex w-full h-8 items-center justify-between rounded-md bg-[var(--surface-alt)] border border-[var(--border)] px-2.5 text-[var(--foreground)] outline-none transition-all hover:border-[var(--muted)] focus:ring-1 focus:ring-[var(--primary)]">
+              <span className="truncate text-left text-xs">{selected?.label}</span>
+              <FiChevronDown className="ml-1.5 text-sm text-[var(--muted-foreground)]" />
             </Listbox.Button>
             <Transition
               as={Fragment}
               show={open}
-              enter="transition ease-out duration-150"
+              enter="transition ease-out duration-100"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"
-              leave="transition ease-in duration-100"
+              leave="transition ease-in duration-75"
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-[var(--surface)] py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none">
+              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-[var(--surface)] border border-[var(--border)] py-1 text-sm shadow-lg focus:outline-none">
                 {options.map((option) => (
                   <Listbox.Option
                     key={option.value}
                     value={option.value}
                     className={({ active, selected }) =>
-                      `relative cursor-pointer select-none py-2 px-4 text-sm ${
+                      `relative cursor-pointer select-none py-1.5 px-3 text-xs ${
                         active ? "bg-[var(--surface-alt)]" : ""
-                      } ${selected ? "font-semibold text-[var(--primary)]" : "text-[var(--foreground)]"}`
+                      } ${selected ? "font-medium text-[var(--primary)]" : "text-[var(--foreground)]"}`
                     }
                   >
                     {option.label}

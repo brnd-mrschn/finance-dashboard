@@ -24,6 +24,7 @@ export async function POST(req: Request) {
       date: new Date(body.date),
       amount: parseFloat(body.amount),
       type: body.type,
+      originId: body.originId || null,
       categoryId: body.categoryId || null,
       userId: body.userId ?? "dev-user",
     },

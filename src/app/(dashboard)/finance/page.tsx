@@ -53,7 +53,7 @@ export default function Finance() {
       {error && <p className="text-[#ed4245]">{error}</p>}
 
       <motion.div 
-        className="bg-[var(--surface)] p-6 rounded-2xl mb-8 border border-[var(--surface-alt)]"
+        className="bg-[var(--surface)] p-6 rounded-lg mb-8 border border-[var(--border)]"
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4 }}
@@ -88,11 +88,11 @@ export default function Finance() {
               stroke: {
                 curve: "smooth",
                 width: 3,
-                colors: ["var(--primary)"]
+                colors: ["#3ecf8e"]
               },
-              colors: ["var(--primary)"],
+              colors: ["#3ecf8e"],
               grid: {
-                borderColor: "var(--surface-alt)",
+                borderColor: "#2e2e2e",
                 strokeDashArray: 4,
               },
               tooltip: {
@@ -105,7 +105,7 @@ export default function Finance() {
       </motion.div>
 
       <motion.div 
-        className="bg-[var(--surface)] p-6 rounded-2xl border border-[var(--surface-alt)]"
+        className="bg-[var(--surface)] p-6 rounded-lg border border-[var(--border)]"
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.6 }}

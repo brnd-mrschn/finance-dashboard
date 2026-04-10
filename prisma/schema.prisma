@@ -22,6 +22,9 @@ model Transaction {
   amount      Float
   type        TransactionType
 
+  originId   String?
+  origin     Origin? @relation(fields: [originId], references: [id])
+
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
 
@@ -32,6 +35,7 @@ model Transaction {
 
   @@index([userId])
   @@index([categoryId])
+  @@index([originId])
   @@index([date])
 }
 
@@ -53,4 +57,13 @@ model Category {
 enum TransactionType {
   INCOME
   EXPENSE
+}
+
+model Origin {
+  id   String @id @default(uuid())
+  name String @unique
+
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
 }
