@@ -42,47 +42,49 @@ export default function DataPage() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <motion.h1
-        className="text-3xl font-bold mb-8 text-[var(--foreground)] tracking-tight"
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-      >
-        Data
-      </motion.h1>
-      <div className="flex gap-4 mb-8">
-        <button
-          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'transactions' ? 'bg-[var(--surface-alt)] text-[var(--foreground)]' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-alt)]'}`}
-          onClick={() => setView('transactions')}
-        >Transações</button>
-        <button
-          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'categories' ? 'bg-[var(--surface-alt)] text-[var(--foreground)]' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-alt)]'}`}
-          onClick={() => setView('categories')}
-        >Categorias</button>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex gap-1">
+          <button
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'transactions' ? 'bg-[var(--surface-alt)] text-[var(--foreground)]' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-alt)]'}`}
+            onClick={() => setView('transactions')}
+          >Transações</button>
+          <button
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'categories' ? 'bg-[var(--surface-alt)] text-[var(--foreground)]' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-alt)]'}`}
+            onClick={() => setView('categories')}
+          >Categorias</button>
+        </div>
+        {view === 'transactions' && (
+          <button
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)]"
+            onClick={() => setNewTransaction({ description: "", date: new Date().toISOString().slice(0,10), amount: 0, type: "EXPENSE", categoryId: "", originId: "" })}
+          >
+            <FiPlus className="text-sm" /> Nova Transação
+          </button>
+        )}
+        {view === 'categories' && (
+          <button
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)]"
+            onClick={() => setNewCategory({ name: "", group: "", subgroup: "", type: "EXPENSE", expected: "" })}
+          >
+            <FiPlus className="text-sm" /> Nova Categoria
+          </button>
+        )}
       </div>
       {error && <p className="text-[#ed4245]">{error}</p>}
       <div>
         {view === 'transactions' && (
-          <div className="bg-[var(--surface)] p-6 rounded-lg border border-[var(--border)]">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-medium text-[var(--foreground)]">Transações</h2>
-              <button
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--primary)] text-white text-xs font-medium hover:bg-[var(--primary-dark)] transition-colors"
-                onClick={() => setNewTransaction({ description: "", date: new Date().toISOString().slice(0,10), amount: 0, type: "EXPENSE", categoryId: "", originId: "" })}
-              >
-                <FiPlus /> Nova Transação
-              </button>
-            </div>
+          <div className="bg-[var(--surface)] rounded-lg border border-[var(--border)]">
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="bg-[var(--surface-alt)]">
-                    <th className="px-3 py-2">Descrição</th>
-                    <th className="px-3 py-2">Data</th>
-                    <th className="px-3 py-2">Valor</th>
-                    <th className="px-3 py-2">Tipo</th>
-                    <th className="px-3 py-2">Categoria</th>
-                    <th className="px-3 py-2">Origem</th>
+                  <tr className="border-y border-[var(--border)]">
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Descrição</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Data</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Valor</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Tipo</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Categoria</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Origem</th>
+                    <th className="px-4 py-2.5"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -150,7 +152,7 @@ export default function DataPage() {
                       </td>
                       <td className="px-3 py-2 text-right">
                         <button
-                          className="px-2.5 py-1 rounded-md bg-[var(--primary)] text-white text-xs font-medium hover:bg-[var(--primary-dark)] transition-colors mr-2"
+                          className="px-2.5 py-1 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)] mr-2"
                           onClick={async () => {
                             if (!newTransaction.description.trim()) {
                               setToast('Preencha a descrição');
@@ -197,7 +199,7 @@ export default function DataPage() {
                           title="Salvar"
                         >Salvar</button>
                         <button
-                          className="px-2.5 py-1 rounded-md border border-[var(--border)] text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted)] transition-colors"
+                          className="px-2.5 py-1 rounded-md text-xs font-medium transition-all bg-transparent text-[var(--muted-foreground)] border border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)] hover:bg-[var(--surface-alt)]"
                           onClick={() => setNewTransaction(null)}
                           title="Cancelar"
                         >Cancelar</button>
@@ -437,25 +439,17 @@ export default function DataPage() {
           </div>
         )}
         {view === 'categories' && (
-          <div className="bg-[var(--surface)] p-6 rounded-lg border border-[var(--border)]">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-medium text-[var(--foreground)]">Categorias</h2>
-              <button
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--primary)] text-white text-xs font-medium hover:bg-[var(--primary-dark)] transition-colors"
-                onClick={() => setNewCategory({ name: "", group: "", subgroup: "", type: "EXPENSE", expected: "" })}
-              >
-                <FiPlus /> Nova Categoria
-              </button>
-            </div>
+          <div className="bg-[var(--surface)] rounded-lg border border-[var(--border)]">
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="bg-[var(--surface-alt)]">
-                    <th className="px-3 py-2">Nome</th>
-                    <th className="px-3 py-2">Grupo</th>
-                    <th className="px-3 py-2">Subgrupo</th>
-                    <th className="px-3 py-2">Tipo</th>
-                    <th className="px-3 py-2">Esperado</th>
+                  <tr className="border-y border-[var(--border)]">
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Nome</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Grupo</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Subgrupo</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Tipo</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Esperado</th>
+                    <th className="px-4 py-2.5"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -507,7 +501,7 @@ export default function DataPage() {
                       </td>
                       <td className="px-3 py-2 text-right">
                         <button
-                          className="px-2.5 py-1 rounded-md bg-[var(--primary)] text-white text-xs font-medium hover:bg-[var(--primary-dark)] transition-colors mr-2"
+                          className="px-2.5 py-1 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)] mr-2"
                           onClick={async () => {
                             if (!newCategory.name.trim()) {
                               setToast('Preencha o nome');
@@ -551,7 +545,7 @@ export default function DataPage() {
                           title="Salvar"
                         >Salvar</button>
                         <button
-                          className="px-2.5 py-1 rounded-md border border-[var(--border)] text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted)] transition-colors"
+                          className="px-2.5 py-1 rounded-md text-xs font-medium transition-all bg-transparent text-[var(--muted-foreground)] border border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)] hover:bg-[var(--surface-alt)]"
                           onClick={() => setNewCategory(null)}
                           title="Cancelar"
                         >Cancelar</button>

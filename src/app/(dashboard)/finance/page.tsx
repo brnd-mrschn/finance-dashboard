@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 // ApexCharts precisa ser importado dinamicamente para evitar SSR issues
-const ApexLineChart = dynamic(() => import("react-apexcharts"), { ssr: false });
+const ApexAreaChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 export default function Finance() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -20,18 +20,32 @@ export default function Finance() {
       });
   }, []);
 
-  // Dados para gráfico de linha (saldo ao longo do tempo)
-  const balanceOverTime = transactions
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .reduce((acc, t) => {
-      const lastBalance = acc.length > 0 ? acc[acc.length - 1].balance : 0;
-      const newBalance = lastBalance + (t.type === "INCOME" ? t.amount : -t.amount);
-      acc.push({
-        date: new Date(t.date).toLocaleDateString(),
-        balance: newBalance
-      });
-      return acc;
-    }, []);
+  // Dados para gráfico de área — timeseries irregular com 3 séries
+  const sorted = [...transactions].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  let cumulativeIncome = 0;
+  let cumulativeExpense = 0;
+  let balance = 0;
+
+  const incomeData: [number, number][] = [];
+  const expenseData: [number, number][] = [];
+  const balanceData: [number, number][] = [];
+
+  sorted.forEach((t) => {
+    const ts = new Date(t.date).getTime();
+    if (t.type === "INCOME") {
+      cumulativeIncome += t.amount;
+      balance += t.amount;
+      incomeData.push([ts, cumulativeIncome]);
+    } else {
+      cumulativeExpense += t.amount;
+      balance -= t.amount;
+      expenseData.push([ts, cumulativeExpense]);
+    }
+    balanceData.push([ts, balance]);
+  });
 
   return (
     <motion.div 
@@ -41,14 +55,6 @@ export default function Finance() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <motion.h1 
-        className="text-3xl font-bold mb-8 text-[var(--foreground)] tracking-tight"
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-      >
-        Financeiro
-      </motion.h1>
 
       {error && <p className="text-[#ed4245]">{error}</p>}
 
@@ -60,44 +66,86 @@ export default function Finance() {
       >
         <h3 className="text-lg font-semibold mb-4 text-[var(--foreground)]">Evolução do Saldo</h3>
         <div style={{ width: "100%", height: 400 }}>
-          <ApexLineChart
-            type="line"
+          <ApexAreaChart
+            type="area"
             height={400}
             width="100%"
-            series={[{
-              name: "Saldo",
-              data: balanceOverTime.map((item: any) => item.balance)
-            }]}
+            series={[
+              { name: "Receitas", data: incomeData },
+              { name: "Despesas", data: expenseData },
+              { name: "Saldo", data: balanceData },
+            ]}
             options={{
               chart: {
-                id: "saldo-evolucao",
+                type: "area",
+                stacked: false,
+                height: 400,
                 background: "transparent",
                 toolbar: { show: false },
                 zoom: { enabled: false },
               },
-              theme: {
-                mode: "dark"
-              },
-              xaxis: {
-                categories: balanceOverTime.map((item: any) => item.date),
-                labels: { style: { colors: "var(--foreground)" } },
-              },
-              yaxis: {
-                labels: { style: { colors: "var(--foreground)" } },
+              theme: { mode: "dark" },
+              colors: ["#3ecf8e", "#ed4245", "#666666"],
+              dataLabels: { enabled: false },
+              markers: { size: 0 },
+              fill: {
+                type: "gradient",
+                gradient: {
+                  shadeIntensity: 1,
+                  inverseColors: false,
+                  opacityFrom: 0.4,
+                  opacityTo: 0.05,
+                  stops: [20, 100, 100, 100],
+                },
               },
               stroke: {
                 curve: "smooth",
-                width: 3,
-                colors: ["#3ecf8e"]
+                width: 2,
               },
-              colors: ["#3ecf8e"],
+              xaxis: {
+                type: "datetime",
+                labels: {
+                  style: { colors: "#888" },
+                  datetimeUTC: false,
+                },
+                axisBorder: { show: false },
+                axisTicks: { show: false },
+              },
+              yaxis: {
+                labels: {
+                  style: { colors: "#888" },
+                  formatter: (val: number) =>
+                    val.toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                      minimumFractionDigits: 0,
+                    }),
+                },
+                axisBorder: { show: false },
+                axisTicks: { show: false },
+              },
               grid: {
                 borderColor: "#2e2e2e",
                 strokeDashArray: 4,
               },
               tooltip: {
+                shared: true,
                 theme: "dark",
-                style: { fontFamily: "inherit" },
+                x: {
+                  format: "dd MMM yyyy",
+                },
+                y: {
+                  formatter: (val: number) =>
+                    val.toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    }),
+                },
+              },
+              legend: {
+                position: "top",
+                horizontalAlign: "right",
+                labels: { colors: "#888" },
               },
             }}
           />

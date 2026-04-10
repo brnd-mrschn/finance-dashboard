@@ -12,7 +12,7 @@ export default function LoginPage() {
         </p>
         <Link
           href="/"
-          className="inline-flex items-center justify-center rounded-full bg-[var(--primary)] px-5 py-3 font-semibold text-black transition-colors hover:opacity-90"
+          className="inline-flex items-center justify-center rounded-full bg-[#30a46c] border border-[#3ecf8e] px-5 py-3 font-semibold text-white transition-all hover:bg-[#2b9260] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)]"
         >
           Entrar no dashboard
         </Link>

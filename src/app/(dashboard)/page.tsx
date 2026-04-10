@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { FiSearch, FiX } from "react-icons/fi";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -8,46 +8,89 @@ import dynamic from "next/dynamic";
 const ApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 import { Card } from "@/app/components/ui/card";
+import { DropdownFilter } from "@/app/components/ui/dropdown-filter";
 
-function ShineCard({ children }: { children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ x: -100, y: -100 });
+function GlassCard({ children }: { children: React.ReactNode }) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [hovering, setHovering] = useState(false);
+  const rows = 5;
+  const columns = 20;
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = ref.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    setPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const items = container.querySelectorAll<HTMLSpanElement>(".ml");
+
+    const onPointerMove = (e: PointerEvent) => {
+      items.forEach((item) => {
+        const rect = item.getBoundingClientRect();
+        const centerX = rect.x + rect.width / 2;
+        const centerY = rect.y + rect.height / 2;
+        const b = e.clientX - centerX;
+        const a = e.clientY - centerY;
+        const c = Math.sqrt(a * a + b * b) || 1;
+        const r =
+          ((Math.acos(b / c) * 180) / Math.PI) *
+          (e.clientY > centerY ? 1 : -1);
+        item.style.setProperty("--rotate", `${r}deg`);
+      });
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+
+    if (items.length) {
+      const mid = Math.floor(items.length / 2);
+      const rect = items[mid].getBoundingClientRect();
+      onPointerMove({ clientX: rect.x, clientY: rect.y } as PointerEvent);
+    }
+
+    return () => window.removeEventListener("pointermove", onPointerMove);
   }, []);
 
   return (
     <div
-      ref={ref}
-      onMouseMove={handleMouseMove}
       onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => { setHovering(false); setPos({ x: -100, y: -100 }); }}
-      className="relative overflow-hidden rounded-lg"
+      onMouseLeave={() => setHovering(false)}
+      className="relative overflow-hidden rounded-lg border border-[rgba(255,255,255,0.06)] transition-all duration-300 hover:border-[rgba(255,255,255,0.12)]"
+      style={{
+        backdropFilter: "blur(12px) saturate(140%)",
+        WebkitBackdropFilter: "blur(12px) saturate(140%)",
+      }}
     >
       {children}
       <div
-        className="pointer-events-none absolute inset-0 rounded-lg transition-opacity duration-300"
+        ref={containerRef}
+        className="pointer-events-none absolute inset-0 transition-opacity duration-300"
         style={{
           opacity: hovering ? 1 : 0,
-          background: `radial-gradient(320px circle at ${pos.x}px ${pos.y}px, rgba(255,255,255,0.06) 0%, transparent 70%)`,
+          display: "grid",
+          gridTemplateColumns: `repeat(${columns}, 1fr)`,
+          gridTemplateRows: `repeat(${rows}, 1fr)`,
+          justifyItems: "center",
+          alignItems: "center",
         }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0 rounded-lg transition-opacity duration-300"
-        style={{
-          opacity: hovering ? 1 : 0,
-          boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.08)`,
-        }}
-      />
+      >
+        {Array.from({ length: rows * columns }, (_, i) => (
+          <span
+            key={i}
+            className="ml block"
+            style={
+              {
+                transformOrigin: "center",
+                willChange: "transform",
+                transform: "rotate(var(--rotate, -10deg))",
+                backgroundColor: "rgba(255,255,255,0.1)",
+                width: "1px",
+                height: "0.75rem",
+              } as React.CSSProperties
+            }
+          />
+        ))}
+      </div>
     </div>
   );
 }
-import { DropdownFilter } from "@/app/components/ui/dropdown-filter";
 
 type Transaction = {
   id: string;
@@ -228,14 +271,6 @@ export default function Dashboard() {
       transition={{ duration: 0.5 }}
     >
       <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <motion.h1
-          className="text-3xl font-bold tracking-tight text-[var(--foreground)]"
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          Dashboard
-        </motion.h1>
 
 
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-end">
@@ -288,7 +323,7 @@ export default function Dashboard() {
                 <input
                   autoFocus
                   type="text"
-                  className="h-full w-full bg-transparent pr-12 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)]"
+                  className="h-full min-w-0 flex-1 bg-transparent pr-7 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)]"
                   placeholder="Buscar por descrição, data, categoria ou valor"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
@@ -435,41 +470,38 @@ export default function Dashboard() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4 }}
       >
-        <ShineCard>
+        <GlassCard>
           <Card
             title="Saldo"
             value={balance.toLocaleString("pt-BR", {
               style: "currency",
               currency: "BRL",
             })}
-            icon={<span role="img" aria-label="Saldo">💰</span>}
             type={balance >= 0 ? "success" : "danger"}
           />
-        </ShineCard>
+        </GlassCard>
 
-        <ShineCard>
+        <GlassCard>
           <Card
             title="Receitas"
             value={income.toLocaleString("pt-BR", {
               style: "currency",
               currency: "BRL",
             })}
-            icon={<span role="img" aria-label="Receitas">🟢</span>}
             type="success"
           />
-        </ShineCard>
+        </GlassCard>
 
-        <ShineCard>
+        <GlassCard>
           <Card
             title="Despesas"
             value={expense.toLocaleString("pt-BR", {
               style: "currency",
               currency: "BRL",
             })}
-            icon={<span role="img" aria-label="Despesas">🔴</span>}
             type="danger"
           />
-        </ShineCard>
+        </GlassCard>
       </motion.div>
 
       {error && <p className="text-[#ed4245]">{error}</p>}

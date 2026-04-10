@@ -15,14 +15,6 @@ export default function Settings() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <motion.h1 
-        className="text-3xl font-bold mb-8 text-[var(--foreground)] tracking-tight"
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-      >
-        Configurações
-      </motion.h1>
 
       <motion.div 
         className="space-y-8 max-w-xl mx-auto"
@@ -69,7 +61,7 @@ export default function Settings() {
         </div>
 
         <motion.button 
-          className="bg-[var(--primary)] hover:opacity-90 text-black px-6 py-2 rounded-full font-semibold shadow-sm"
+          className="bg-[#30a46c] border border-[#3ecf8e] hover:bg-[#2b9260] text-white px-6 py-2 rounded-full font-semibold shadow-sm transition-all hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)]"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
