@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { FiTrash2, FiPlus } from "react-icons/fi";
+import { FiTrash2, FiPlus, FiChevronUp, FiChevronDown } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function DataPage() {
@@ -18,6 +18,59 @@ export default function DataPage() {
   const [newTransaction, setNewTransaction] = useState<any | null>(null);
   const [newCategory, setNewCategory] = useState<any | null>(null);
   const [view, setView] = useState<'transactions' | 'categories'>('transactions');
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const [sortField, setSortField] = useState<string>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [catSortField, setCatSortField] = useState<string>('name');
+  const [catSortDir, setCatSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
+  const toggleCatSort = (field: string) => {
+    if (catSortField === field) setCatSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setCatSortField(field); setCatSortDir('asc'); }
+  };
+
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    switch (sortField) {
+      case 'description': return dir * a.description.localeCompare(b.description);
+      case 'date': return dir * (new Date(a.date).getTime() - new Date(b.date).getTime());
+      case 'amount': return dir * (a.amount - b.amount);
+      case 'type': return dir * a.type.localeCompare(b.type);
+      case 'categoryId': {
+        const ca = categories.find(c => c.id === a.categoryId)?.name || '';
+        const cb = categories.find(c => c.id === b.categoryId)?.name || '';
+        return dir * ca.localeCompare(cb);
+      }
+      case 'originId': {
+        const oa = origins.find(o => o.id === a.originId)?.name || '';
+        const ob = origins.find(o => o.id === b.originId)?.name || '';
+        return dir * oa.localeCompare(ob);
+      }
+      default: return 0;
+    }
+  });
+
+  const sortedCategories = [...categories].sort((a, b) => {
+    const dir = catSortDir === 'asc' ? 1 : -1;
+    switch (catSortField) {
+      case 'name': return dir * a.name.localeCompare(b.name);
+      case 'group': return dir * (a.group || '').localeCompare(b.group || '');
+      case 'subgroup': return dir * (a.subgroup || '').localeCompare(b.subgroup || '');
+      case 'type': return dir * a.type.localeCompare(b.type);
+      case 'expected': return dir * ((a.expected || 0) - (b.expected || 0));
+      default: return 0;
+    }
+  });
+
+  const SortIcon = ({ field, current, dir }: { field: string; current: string; dir: 'asc' | 'desc' }) => (
+    <span className="inline-flex ml-1 opacity-60">
+      {current === field ? (dir === 'asc' ? <FiChevronUp size={12} /> : <FiChevronDown size={12} />) : <FiChevronDown size={10} className="opacity-30" />}
+    </span>
+  );
 
   useEffect(() => {
     fetch("/api/transactions")
@@ -78,19 +131,19 @@ export default function DataPage() {
               <table className="min-w-full text-sm" style={{ tableLayout: "fixed" }}>
                 <thead>
                   <tr className="border-y border-[var(--border)]">
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[22%]">Descrição</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%]">Data</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%]">Valor</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[12%]">Tipo</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[16%]">Categoria</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%]">Origem</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[22%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('description')}>Descrição<SortIcon field="description" current={sortField} dir={sortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('date')}>Data<SortIcon field="date" current={sortField} dir={sortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('amount')}>Valor<SortIcon field="amount" current={sortField} dir={sortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[12%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('type')}>Tipo<SortIcon field="type" current={sortField} dir={sortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[16%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('categoryId')}>Categoria<SortIcon field="categoryId" current={sortField} dir={sortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('originId')}>Origem<SortIcon field="originId" current={sortField} dir={sortDir} /></th>
                     <th className="px-4 py-2.5 w-[8%]"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {newTransaction && (
                     <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         <input
                           className="edit-field"
                           value={newTransaction.description}
@@ -99,7 +152,7 @@ export default function DataPage() {
                           autoFocus
                         />
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         <input
                           type="date"
                           className="edit-field"
@@ -107,7 +160,7 @@ export default function DataPage() {
                           onChange={e => setNewTransaction((nt: any) => ({ ...nt, date: e.target.value }))}
                         />
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         <input
                           type="number"
                           className="edit-field"
@@ -116,7 +169,7 @@ export default function DataPage() {
                           placeholder="Valor"
                         />
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         <select
                           className="edit-field"
                           value={newTransaction.type}
@@ -126,7 +179,7 @@ export default function DataPage() {
                           <option value="EXPENSE">Despesa</option>
                         </select>
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         <select
                           className="edit-field"
                           value={newTransaction.categoryId}
@@ -138,7 +191,7 @@ export default function DataPage() {
                           ))}
                         </select>
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         <select
                           className="edit-field"
                           value={newTransaction.originId}
@@ -206,10 +259,10 @@ export default function DataPage() {
                       </td>
                     </tr>
                   )}
-                  {transactions.map((t) => (
-                    <tr key={t.id} className={`border-b border-[var(--border)] transition-colors duration-200 ${editingTransaction === t.id ? 'bg-[var(--surface-alt)]' : 'hover:bg-[var(--surface-alt)]'}`}>
+                  {sortedTransactions.map((t) => (
+                    <tr key={t.id} style={{ height: 40 }} className={`border-b border-[var(--border)] transition-colors duration-200 ${editingTransaction === t.id ? 'bg-[var(--surface-alt)]' : 'hover:bg-[var(--surface-alt)]'}`}>
                       {/* Descrição */}
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         {editingTransaction === t.id && editingField === 'description' ? (
                           <input
                             className="edit-field"
@@ -241,7 +294,7 @@ export default function DataPage() {
                         )}
                       </td>
                       {/* Data */}
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         {editingTransaction === t.id && editingField === 'date' ? (
                           <input
                             type="date"
@@ -274,7 +327,7 @@ export default function DataPage() {
                         )}
                       </td>
                       {/* Valor */}
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         {editingTransaction === t.id && editingField === 'amount' ? (
                           <input
                             type="number"
@@ -307,7 +360,7 @@ export default function DataPage() {
                         )}
                       </td>
                       {/* Tipo */}
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         {editingTransaction === t.id && editingField === 'type' ? (
                           <select
                             className="edit-field"
@@ -342,7 +395,7 @@ export default function DataPage() {
                         )}
                       </td>
                       {/* Categoria */}
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         {editingTransaction === t.id && editingField === 'categoryId' ? (
                           <select
                             className="edit-field"
@@ -381,7 +434,7 @@ export default function DataPage() {
                         )}
                       </td>
                       {/* Origem */}
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         {editingTransaction === t.id && editingField === 'originId' ? (
                           <select
                             className="edit-field"
@@ -419,19 +472,24 @@ export default function DataPage() {
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="pr-4 py-2 text-right">
                         <button
                           className="text-red-500 hover:text-red-700"
                           title="Remover"
-                          onClick={async () => {
-                            if (!confirm("Remover transação?")) return;
-                            setSaving(true);
-                            await fetch(`/api/transactions/${t.id}`, { method: "DELETE" });
-                            setTransactions((prev) => prev.filter((tr) => tr.id !== t.id));
-                            setSaving(false);
-                            setToast('Transação removida!');
-                            if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                            toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                          onClick={() => {
+                            setConfirmModal({
+                              message: "Tem certeza que deseja remover esta transação?",
+                              onConfirm: async () => {
+                                setConfirmModal(null);
+                                setSaving(true);
+                                await fetch(`/api/transactions/${t.id}`, { method: "DELETE" });
+                                setTransactions((prev) => prev.filter((tr) => tr.id !== t.id));
+                                setSaving(false);
+                                setToast('Transação removida!');
+                                if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                                toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              },
+                            });
                           }}
                         >
                           <FiTrash2 />
@@ -447,21 +505,21 @@ export default function DataPage() {
         {view === 'categories' && (
           <div className="bg-[var(--surface)] rounded-lg border border-[var(--border)]">
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
+              <table className="min-w-full text-sm" style={{ tableLayout: "fixed" }}>
                 <thead>
                   <tr className="border-y border-[var(--border)]">
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Nome</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Grupo</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Subgrupo</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Tipo</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Esperado</th>
-                    <th className="px-4 py-2.5"></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[22%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('name')}>Nome<SortIcon field="name" current={catSortField} dir={catSortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[20%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('group')}>Grupo<SortIcon field="group" current={catSortField} dir={catSortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[20%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('subgroup')}>Subgrupo<SortIcon field="subgroup" current={catSortField} dir={catSortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('type')}>Tipo<SortIcon field="type" current={catSortField} dir={catSortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[16%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('expected')}>Esperado<SortIcon field="expected" current={catSortField} dir={catSortDir} /></th>
+                    <th className="px-4 py-2.5 w-[8%]"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {newCategory && (
                     <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         <input
                           className="edit-field"
                           value={newCategory.name}
@@ -470,7 +528,7 @@ export default function DataPage() {
                           autoFocus
                         />
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         <input
                           className="edit-field"
                           value={newCategory.group}
@@ -478,7 +536,7 @@ export default function DataPage() {
                           placeholder="Grupo"
                         />
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         <input
                           className="edit-field"
                           value={newCategory.subgroup}
@@ -486,7 +544,7 @@ export default function DataPage() {
                           placeholder="Subgrupo"
                         />
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         <select
                           className="edit-field"
                           value={newCategory.type}
@@ -496,7 +554,7 @@ export default function DataPage() {
                           <option value="INCOME">Receita</option>
                         </select>
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         <input
                           type="number"
                           className="edit-field"
@@ -558,9 +616,9 @@ export default function DataPage() {
                       </td>
                     </tr>
                   )}
-                  {categories.map((c) => (
-                    <tr key={c.id} className={`border-b border-[var(--border)] transition-colors duration-200 ${editingCategory === c.id ? 'bg-[var(--surface-alt)]' : 'hover:bg-[var(--surface-alt)]'}`}>
-                      <td className="px-3 py-2">
+                  {sortedCategories.map((c) => (
+                    <tr key={c.id} style={{ height: 40 }} className={`border-b border-[var(--border)] transition-colors duration-200 ${editingCategory === c.id ? 'bg-[var(--surface-alt)]' : 'hover:bg-[var(--surface-alt)]'}`}>
+                      <td className="px-3 py-1.5">
                         {editingCategory === c.id && editingField === 'name' ? (
                           <input
                             className="edit-field"
@@ -591,7 +649,7 @@ export default function DataPage() {
                           <span onClick={() => { setEditingCategory(c.id); setEditingField('name'); }} className="cursor-pointer hover:underline">{c.name}</span>
                         )}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         {editingCategory === c.id && editingField === 'group' ? (
                           <input
                             className="edit-field"
@@ -622,7 +680,7 @@ export default function DataPage() {
                           <span onClick={() => { setEditingCategory(c.id); setEditingField('group'); }} className="cursor-pointer hover:underline">{c.group}</span>
                         )}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         {editingCategory === c.id && editingField === 'subgroup' ? (
                           <input
                             className="edit-field"
@@ -653,7 +711,7 @@ export default function DataPage() {
                           <span onClick={() => { setEditingCategory(c.id); setEditingField('subgroup'); }} className="cursor-pointer hover:underline">{c.subgroup}</span>
                         )}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         {editingCategory === c.id && editingField === 'type' ? (
                           <select
                             className="edit-field"
@@ -687,7 +745,7 @@ export default function DataPage() {
                           <span onClick={() => { setEditingCategory(c.id); setEditingField('type'); }} className="cursor-pointer hover:underline">{c.type === "INCOME" ? "Receita" : "Despesa"}</span>
                         )}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         {editingCategory === c.id && editingField === 'expected' ? (
                           <input
                             type="number"
@@ -721,19 +779,24 @@ export default function DataPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="pr-4 py-2 text-right">
                         <button
                           className="text-red-500 hover:text-red-700"
                           title="Remover"
-                          onClick={async () => {
-                            if (!confirm("Remover categoria?")) return;
-                            setSaving(true);
-                            await fetch(`/api/categories/${c.id}`, { method: "DELETE" });
-                            setCategories((prev) => prev.filter((cat) => cat.id !== c.id));
-                            setSaving(false);
-                            setToast('Categoria removida!');
-                            if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                            toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                          onClick={() => {
+                            setConfirmModal({
+                              message: "Tem certeza que deseja remover esta categoria?",
+                              onConfirm: async () => {
+                                setConfirmModal(null);
+                                setSaving(true);
+                                await fetch(`/api/categories/${c.id}`, { method: "DELETE" });
+                                setCategories((prev) => prev.filter((cat) => cat.id !== c.id));
+                                setSaving(false);
+                                setToast('Categoria removida!');
+                                if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                                toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              },
+                            });
                           }}
                         >
                           <FiTrash2 />
@@ -754,6 +817,38 @@ export default function DataPage() {
           </span>
         </div>
       )}
+      <AnimatePresence>
+        {confirmModal && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setConfirmModal(null)}
+          >
+            <motion.div
+              className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-6 shadow-xl max-w-sm w-full mx-4"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-[var(--foreground)] text-sm mb-5">{confirmModal.message}</p>
+              <div className="flex justify-end gap-2">
+                <button
+                  className="px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-transparent text-[var(--muted-foreground)] border border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)] hover:bg-[var(--surface-alt)]"
+                  onClick={() => setConfirmModal(null)}
+                >Cancelar</button>
+                <button
+                  className="px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#ed4245] text-white border border-[#ed4245] hover:bg-[#d63638] shadow-[0_0_0_0_rgba(237,66,69,0)] hover:shadow-[0_0_8px_0_rgba(237,66,69,0.25)]"
+                  onClick={confirmModal.onConfirm}
+                >Remover</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

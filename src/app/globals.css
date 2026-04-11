@@ -1,3 +1,13 @@
+/* Remove spinners de inputs numéricos */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 /* Garante contraste do texto das opções dos selects em ambos os temas */
 select, select option {
   color: var(--foreground) !important;
@@ -25,19 +35,19 @@ html.light input[type="date"]::-webkit-calendar-picker-indicator {
   background: var(--surface-alt);
   border: 1px solid var(--primary);
   border-radius: 4px;
-  padding: 2px 6px;
+  padding: 0 6px;
   outline: none;
   width: 100%;
   color: var(--foreground);
   font-size: 13px;
-  line-height: 1.4;
-  height: 28px;
+  line-height: 1.2;
+  height: 24px;
   box-sizing: border-box;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
-  box-shadow: 0 0 0 0 rgba(62, 207, 142, 0);
+  box-shadow: none;
 }
 .edit-field:focus {
-  box-shadow: 0 0 0 2px rgba(62, 207, 142, 0.25);
+  box-shadow: inset 0 0 0 1px var(--primary);
   border-color: var(--primary);
 }
 .edit-field option {
