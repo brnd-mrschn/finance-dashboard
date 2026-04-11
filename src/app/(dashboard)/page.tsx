@@ -12,6 +12,48 @@ import { DropdownFilter } from "@/app/components/ui/dropdown-filter";
 
 const SPOTLIGHT_RADIUS = 250;
 
+function SmoothScrollList({ children, className }: { children: React.ReactNode; className?: string }) {
+  const wrapperRef = useRef<HTMLUListElement>(null);
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    let targetScroll = el.scrollTop;
+    let currentScroll = el.scrollTop;
+    let rafId: number;
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const maxScroll = el.scrollHeight - el.clientHeight;
+      targetScroll = Math.max(0, Math.min(maxScroll, targetScroll + e.deltaY));
+    };
+
+    const animate = () => {
+      currentScroll = lerp(currentScroll, targetScroll, 0.1);
+      if (Math.abs(currentScroll - targetScroll) < 0.5) currentScroll = targetScroll;
+      el.scrollTop = currentScroll;
+      rafId = requestAnimationFrame(animate);
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    rafId = requestAnimationFrame(animate);
+
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
+
+  return (
+    <ul ref={wrapperRef} className={className} style={{ overflowY: "auto" }} data-lenis-prevent>
+      {children}
+    </ul>
+  );
+}
+
 function SpotlightGrid({ children }: { children: React.ReactNode }) {
   const gridRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
@@ -309,7 +351,7 @@ export default function Dashboard() {
               label="Mês"
               value={selectedMonth}
               onChange={setSelectedMonth}
-              options={[{ value: "", label: "Todos" }, ...uniqueMonths.map((month) => ({ value: String(month), label: String(month).padStart(2, "0") }))]}
+              options={[{ value: "", label: "Todos" }, ...uniqueMonths.map((month) => ({ value: String(month), label: new Date(2000, month - 1).toLocaleDateString("pt-BR", { month: "long" }).replace(/^./, (c) => c.toUpperCase()) }))]}
             />
             <DropdownFilter
               label="Categoria"
@@ -776,7 +818,7 @@ export default function Dashboard() {
           <h3 className="mb-4 text-center text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">
             Gastos por Categoria
           </h3>
-          <ul className="flex-1 overflow-y-auto space-y-1">
+          <SmoothScrollList className="flex-1 overflow-hidden space-y-1">
             {categories.map((category) => (
               <li key={category.id} className="flex justify-between text-[var(--foreground)]">
                 <span>{category.name}</span>
@@ -794,7 +836,7 @@ export default function Dashboard() {
                 </span>
               </li>
             ))}
-          </ul>
+          </SmoothScrollList>
         </div>
       </motion.div>
 
@@ -802,7 +844,7 @@ export default function Dashboard() {
         <p className="text-[var(--muted)]">Nenhuma transação encontrada</p>
       ) : (
         <div>
-          <h2 className="mb-4 text-xl font-bold text-[var(--foreground)] text-left">Gastos recentes</h2>
+          <h2 className="mb-4 text-left text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">Gastos recentes</h2>
           <motion.div
             className="space-y-4"
             initial={{ y: 20, opacity: 0 }}
@@ -816,10 +858,10 @@ export default function Dashboard() {
                 <motion.div
                   key={transaction.id}
                   className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:bg-[var(--surface-alt)]"
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.1 * index }}
-                  whileHover={{ scale: 1.01 }}
+                  initial={{ y: 10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.05 * index, duration: 0.4, ease: "easeOut" }}
+                  whileHover={{ scale: 1.005, transition: { duration: 0.2 } }}
                 >
                   <div>
                     <p className="font-medium text-[var(--foreground)]">{transaction.description}</p>

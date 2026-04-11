@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { FiTrash2, FiPlus } from "react-icons/fi";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function DataPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -75,16 +75,16 @@ export default function DataPage() {
         {view === 'transactions' && (
           <div className="bg-[var(--surface)] rounded-lg border border-[var(--border)]">
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
+              <table className="min-w-full text-sm" style={{ tableLayout: "fixed" }}>
                 <thead>
                   <tr className="border-y border-[var(--border)]">
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Descrição</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Data</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Valor</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Tipo</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Categoria</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Origem</th>
-                    <th className="px-4 py-2.5"></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[22%]">Descrição</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%]">Data</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%]">Valor</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[12%]">Tipo</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[16%]">Categoria</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%]">Origem</th>
+                    <th className="px-4 py-2.5 w-[8%]"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -92,7 +92,7 @@ export default function DataPage() {
                     <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
                       <td className="px-3 py-2">
                         <input
-                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          className="edit-field"
                           value={newTransaction.description}
                           onChange={e => setNewTransaction((nt: any) => ({ ...nt, description: e.target.value }))}
                           placeholder="Descrição"
@@ -102,7 +102,7 @@ export default function DataPage() {
                       <td className="px-3 py-2">
                         <input
                           type="date"
-                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          className="edit-field"
                           value={newTransaction.date}
                           onChange={e => setNewTransaction((nt: any) => ({ ...nt, date: e.target.value }))}
                         />
@@ -110,7 +110,7 @@ export default function DataPage() {
                       <td className="px-3 py-2">
                         <input
                           type="number"
-                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          className="edit-field"
                           value={newTransaction.amount}
                           onChange={e => setNewTransaction((nt: any) => ({ ...nt, amount: e.target.value }))}
                           placeholder="Valor"
@@ -118,7 +118,7 @@ export default function DataPage() {
                       </td>
                       <td className="px-3 py-2">
                         <select
-                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          className="edit-field"
                           value={newTransaction.type}
                           onChange={e => setNewTransaction((nt: any) => ({ ...nt, type: e.target.value }))}
                         >
@@ -128,7 +128,7 @@ export default function DataPage() {
                       </td>
                       <td className="px-3 py-2">
                         <select
-                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          className="edit-field"
                           value={newTransaction.categoryId}
                           onChange={e => setNewTransaction((nt: any) => ({ ...nt, categoryId: e.target.value }))}
                         >
@@ -140,7 +140,7 @@ export default function DataPage() {
                       </td>
                       <td className="px-3 py-2">
                         <select
-                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          className="edit-field"
                           value={newTransaction.originId}
                           onChange={e => setNewTransaction((nt: any) => ({ ...nt, originId: e.target.value }))}
                         >
@@ -207,17 +207,18 @@ export default function DataPage() {
                     </tr>
                   )}
                   {transactions.map((t) => (
-                    <tr key={t.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-alt)]">
+                    <tr key={t.id} className={`border-b border-[var(--border)] transition-colors duration-200 ${editingTransaction === t.id ? 'bg-[var(--surface-alt)]' : 'hover:bg-[var(--surface-alt)]'}`}>
                       {/* Descrição */}
                       <td className="px-3 py-2">
                         {editingTransaction === t.id && editingField === 'description' ? (
                           <input
-                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            className="edit-field"
                             defaultValue={t.description}
                             autoFocus
                             onBlur={async (e) => {
-                              setSaving(true);
                               const value = e.target.value;
+                              if (value === t.description) { setEditingTransaction(null); setEditingField(null); return; }
+                              setSaving(true);
                               await fetch(`/api/transactions/${t.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
@@ -236,7 +237,7 @@ export default function DataPage() {
                             }}
                           />
                         ) : (
-                          <span onClick={() => { setEditingTransaction(t.id); setEditingField('description'); }} className="cursor-pointer hover:underline">{t.description}</span>
+                          <div onClick={() => { setEditingTransaction(t.id); setEditingField('description'); }} className="cursor-pointer hover:underline w-full min-h-[24px] flex items-center">{t.description}</div>
                         )}
                       </td>
                       {/* Data */}
@@ -244,12 +245,13 @@ export default function DataPage() {
                         {editingTransaction === t.id && editingField === 'date' ? (
                           <input
                             type="date"
-                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            className="edit-field"
                             defaultValue={t.date.slice(0, 10)}
                             autoFocus
                             onBlur={async (e) => {
-                              setSaving(true);
                               const value = e.target.value;
+                              if (value === t.date.slice(0, 10)) { setEditingTransaction(null); setEditingField(null); return; }
+                              setSaving(true);
                               await fetch(`/api/transactions/${t.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
@@ -268,7 +270,7 @@ export default function DataPage() {
                             }}
                           />
                         ) : (
-                          <span onClick={() => { setEditingTransaction(t.id); setEditingField('date'); }} className="cursor-pointer hover:underline">{new Date(t.date).toLocaleDateString()}</span>
+                          <div onClick={() => { setEditingTransaction(t.id); setEditingField('date'); }} className="cursor-pointer hover:underline w-full min-h-[24px] flex items-center">{new Date(t.date.slice(0, 10) + "T00:00:00").toLocaleDateString("pt-BR")}</div>
                         )}
                       </td>
                       {/* Valor */}
@@ -276,12 +278,13 @@ export default function DataPage() {
                         {editingTransaction === t.id && editingField === 'amount' ? (
                           <input
                             type="number"
-                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            className="edit-field"
                             defaultValue={t.amount}
                             autoFocus
                             onBlur={async (e) => {
-                              setSaving(true);
                               const value = parseFloat(e.target.value);
+                              if (value === t.amount) { setEditingTransaction(null); setEditingField(null); return; }
+                              setSaving(true);
                               await fetch(`/api/transactions/${t.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
@@ -300,19 +303,20 @@ export default function DataPage() {
                             }}
                           />
                         ) : (
-                          <span onClick={() => { setEditingTransaction(t.id); setEditingField('amount'); }} className="cursor-pointer hover:underline">{t.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                          <div onClick={() => { setEditingTransaction(t.id); setEditingField('amount'); }} className="cursor-pointer hover:underline w-full min-h-[24px] flex items-center">{t.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
                         )}
                       </td>
                       {/* Tipo */}
                       <td className="px-3 py-2">
                         {editingTransaction === t.id && editingField === 'type' ? (
                           <select
-                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            className="edit-field"
                             defaultValue={t.type}
                             autoFocus
                             onBlur={async (e) => {
-                              setSaving(true);
                               const value = e.target.value;
+                              if (value === t.type) { setEditingTransaction(null); setEditingField(null); return; }
+                              setSaving(true);
                               await fetch(`/api/transactions/${t.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
@@ -334,19 +338,20 @@ export default function DataPage() {
                             <option value="EXPENSE">Despesa</option>
                           </select>
                         ) : (
-                          <span onClick={() => { setEditingTransaction(t.id); setEditingField('type'); }} className="cursor-pointer hover:underline">{t.type === "INCOME" ? "Receita" : "Despesa"}</span>
+                          <div onClick={() => { setEditingTransaction(t.id); setEditingField('type'); }} className="cursor-pointer hover:underline w-full min-h-[24px] flex items-center">{t.type === "INCOME" ? "Receita" : "Despesa"}</div>
                         )}
                       </td>
                       {/* Categoria */}
                       <td className="px-3 py-2">
                         {editingTransaction === t.id && editingField === 'categoryId' ? (
                           <select
-                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            className="edit-field"
                             defaultValue={t.categoryId || ""}
                             autoFocus
                             onBlur={async (e) => {
-                              setSaving(true);
                               const value = e.target.value;
+                              if (value === (t.categoryId || "")) { setEditingTransaction(null); setEditingField(null); return; }
+                              setSaving(true);
                               await fetch(`/api/transactions/${t.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
@@ -370,21 +375,22 @@ export default function DataPage() {
                             ))}
                           </select>
                         ) : (
-                          <span onClick={() => { setEditingTransaction(t.id); setEditingField('categoryId'); }} className="cursor-pointer hover:underline">
+                          <div onClick={() => { setEditingTransaction(t.id); setEditingField('categoryId'); }} className="cursor-pointer hover:underline w-full min-h-[24px] flex items-center">
                             {categories.find((c) => c.id === t.categoryId)?.name || <span className="italic text-gray-400">Sem categoria</span>}
-                          </span>
+                          </div>
                         )}
                       </td>
                       {/* Origem */}
                       <td className="px-3 py-2">
                         {editingTransaction === t.id && editingField === 'originId' ? (
                           <select
-                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            className="edit-field"
                             defaultValue={t.originId || ""}
                             autoFocus
                             onBlur={async (e) => {
-                              setSaving(true);
                               const value = e.target.value;
+                              if (value === (t.originId || "")) { setEditingTransaction(null); setEditingField(null); return; }
+                              setSaving(true);
                               await fetch(`/api/transactions/${t.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
@@ -408,9 +414,9 @@ export default function DataPage() {
                             ))}
                           </select>
                         ) : (
-                          <span onClick={() => { setEditingTransaction(t.id); setEditingField('originId'); }} className="cursor-pointer hover:underline">
+                          <div onClick={() => { setEditingTransaction(t.id); setEditingField('originId'); }} className="cursor-pointer hover:underline w-full min-h-[24px] flex items-center">
                             {origins.find((o) => o.id === t.originId)?.name || <span className="italic text-gray-400">-</span>}
-                          </span>
+                          </div>
                         )}
                       </td>
                       <td className="px-3 py-2 text-right">
@@ -457,7 +463,7 @@ export default function DataPage() {
                     <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
                       <td className="px-3 py-2">
                         <input
-                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          className="edit-field"
                           value={newCategory.name}
                           onChange={e => setNewCategory((nc: any) => ({ ...nc, name: e.target.value }))}
                           placeholder="Nome"
@@ -466,7 +472,7 @@ export default function DataPage() {
                       </td>
                       <td className="px-3 py-2">
                         <input
-                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          className="edit-field"
                           value={newCategory.group}
                           onChange={e => setNewCategory((nc: any) => ({ ...nc, group: e.target.value }))}
                           placeholder="Grupo"
@@ -474,7 +480,7 @@ export default function DataPage() {
                       </td>
                       <td className="px-3 py-2">
                         <input
-                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          className="edit-field"
                           value={newCategory.subgroup}
                           onChange={e => setNewCategory((nc: any) => ({ ...nc, subgroup: e.target.value }))}
                           placeholder="Subgrupo"
@@ -482,7 +488,7 @@ export default function DataPage() {
                       </td>
                       <td className="px-3 py-2">
                         <select
-                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          className="edit-field"
                           value={newCategory.type}
                           onChange={e => setNewCategory((nc: any) => ({ ...nc, type: e.target.value }))}
                         >
@@ -493,7 +499,7 @@ export default function DataPage() {
                       <td className="px-3 py-2">
                         <input
                           type="number"
-                          className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                          className="edit-field"
                           value={newCategory.expected}
                           onChange={e => setNewCategory((nc: any) => ({ ...nc, expected: e.target.value }))}
                           placeholder="Valor esperado"
@@ -553,16 +559,17 @@ export default function DataPage() {
                     </tr>
                   )}
                   {categories.map((c) => (
-                    <tr key={c.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-alt)]">
+                    <tr key={c.id} className={`border-b border-[var(--border)] transition-colors duration-200 ${editingCategory === c.id ? 'bg-[var(--surface-alt)]' : 'hover:bg-[var(--surface-alt)]'}`}>
                       <td className="px-3 py-2">
                         {editingCategory === c.id && editingField === 'name' ? (
                           <input
-                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            className="edit-field"
                             defaultValue={c.name}
                             autoFocus
                             onBlur={async (e) => {
-                              setSaving(true);
                               const value = e.target.value;
+                              if (value === c.name) { setEditingCategory(null); setEditingField(null); return; }
+                              setSaving(true);
                               await fetch(`/api/categories/${c.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
@@ -587,12 +594,13 @@ export default function DataPage() {
                       <td className="px-3 py-2">
                         {editingCategory === c.id && editingField === 'group' ? (
                           <input
-                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            className="edit-field"
                             defaultValue={c.group}
                             autoFocus
                             onBlur={async (e) => {
-                              setSaving(true);
                               const value = e.target.value;
+                              if (value === c.group) { setEditingCategory(null); setEditingField(null); return; }
+                              setSaving(true);
                               await fetch(`/api/categories/${c.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
@@ -617,12 +625,13 @@ export default function DataPage() {
                       <td className="px-3 py-2">
                         {editingCategory === c.id && editingField === 'subgroup' ? (
                           <input
-                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            className="edit-field"
                             defaultValue={c.subgroup}
                             autoFocus
                             onBlur={async (e) => {
-                              setSaving(true);
                               const value = e.target.value;
+                              if (value === c.subgroup) { setEditingCategory(null); setEditingField(null); return; }
+                              setSaving(true);
                               await fetch(`/api/categories/${c.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
@@ -647,12 +656,13 @@ export default function DataPage() {
                       <td className="px-3 py-2">
                         {editingCategory === c.id && editingField === 'type' ? (
                           <select
-                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            className="edit-field"
                             defaultValue={c.type}
                             autoFocus
                             onBlur={async (e) => {
-                              setSaving(true);
                               const value = e.target.value;
+                              if (value === c.type) { setEditingCategory(null); setEditingField(null); return; }
+                              setSaving(true);
                               await fetch(`/api/categories/${c.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
@@ -681,12 +691,13 @@ export default function DataPage() {
                         {editingCategory === c.id && editingField === 'expected' ? (
                           <input
                             type="number"
-                            className="bg-transparent border-b border-[var(--primary)] outline-none w-full"
+                            className="edit-field"
                             defaultValue={c.expected ?? ""}
                             autoFocus
                             onBlur={async (e) => {
-                              setSaving(true);
                               const value = e.target.value ? parseFloat(e.target.value) : null;
+                              if (value === (c.expected ?? null)) { setEditingCategory(null); setEditingField(null); return; }
+                              setSaving(true);
                               await fetch(`/api/categories/${c.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
@@ -737,8 +748,8 @@ export default function DataPage() {
         )}
       </div>
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <span className="bg-[var(--surface)] border border-[var(--border)] px-4 py-2.5 rounded-md text-[var(--foreground)] text-sm font-medium shadow-lg">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+          <span className="bg-[#1a3a2a] border border-[#3ecf8e] px-4 py-2.5 rounded-md text-[#3ecf8e] text-sm font-medium shadow-lg">
             {toast}
           </span>
         </div>
