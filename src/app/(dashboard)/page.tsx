@@ -268,10 +268,8 @@ export default function Dashboard() {
   const monthlyData = filteredTransactions.reduce<
     Record<string, { month: string; income: number; expense: number }>
   >((accumulator, transaction) => {
-    const month = new Date(transaction.date).toLocaleDateString("pt-BR", {
-      month: "short",
-      year: "numeric",
-    });
+    const d = new Date(transaction.date);
+    const month = `${d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")}/${d.getFullYear()}`;
 
     if (!accumulator[month]) {
       accumulator[month] = { month, income: 0, expense: 0 };
@@ -631,44 +629,70 @@ export default function Dashboard() {
               width="100%"
               height="100%"
               style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
-              series={[ 
-                {
-                  name: "Esperado",
-                  data: categories.map((category) => category.expected ?? 0),
-                },
+              series={[
                 {
                   name: "Real",
-                  data: categories.map((category) =>
-                    filteredTransactions
-                      .filter(
-                        (transaction) =>
-                          transaction.categoryId === category.id && transaction.type === "EXPENSE"
+                  data: categories
+                    .filter((category) =>
+                      filteredTransactions.some(
+                        (t) => t.categoryId === category.id && t.type === "EXPENSE"
                       )
-                      .reduce((accumulator, transaction) => accumulator + transaction.amount, 0)
-                  ),
+                    )
+                    .map((category) => {
+                      const real = filteredTransactions
+                        .filter(
+                          (t) => t.categoryId === category.id && t.type === "EXPENSE"
+                        )
+                        .reduce((acc, t) => acc + t.amount, 0);
+                      const expected = category.expected ?? 0;
+                      return {
+                        x: category.name,
+                        y: real,
+                        goals: expected > 0
+                          ? [
+                              {
+                                name: "Esperado",
+                                value: expected,
+                                strokeHeight: 5,
+                                strokeColor: "#775DD0",
+                              },
+                            ]
+                          : [],
+                      };
+                    }),
                 },
               ]}
               options={{
-                chart: { background: "transparent", stacked: false, toolbar: { show: false } },
+                chart: { background: "transparent", toolbar: { show: false } },
                 theme: { mode: "dark" },
+                plotOptions: {
+                  bar: {
+                    columnWidth: "55%",
+                    borderRadius: 6,
+                  },
+                },
+                colors: ["#3ecf8e"],
+                dataLabels: { enabled: false },
                 xaxis: {
-                  categories: categories.map((category) => category.name),
                   labels: {
-                    style: { colors: "var(--foreground)", fontSize: '10px' },
+                    style: { colors: "var(--foreground)", fontSize: "10px" },
                     rotate: -45,
                     trim: true,
                     hideOverlappingLabels: true,
-                    showDuplicates: false,
                     maxHeight: 60,
                   },
-                  tickPlacement: 'on',
+                  tickPlacement: "on",
                 },
                 yaxis: { labels: { style: { colors: "var(--foreground)" } } },
-                legend: { labels: { colors: "var(--foreground)" } },
-                colors: ["#666666", "#ed4245"],
+                legend: {
+                  show: true,
+                  showForSingleSeries: true,
+                  customLegendItems: ["Real", "Esperado"],
+                  markers: { fillColors: ["#3ecf8e", "#775DD0"] },
+                  labels: { colors: "var(--foreground)" },
+                },
                 grid: { borderColor: "#2e2e2e", strokeDashArray: 4 },
                 tooltip: { theme: "dark" },
-                plotOptions: { bar: { borderRadius: 6, columnWidth: '55%', barHeight: '80%' } },
               }}
             />
           </div>
@@ -678,37 +702,73 @@ export default function Dashboard() {
           <h3 className="mb-4 text-center text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">
             Receitas vs Despesas Mensais
           </h3>
-          <div className="relative flex-1 w-full h-full" style={{ minHeight: 0, minWidth: 0 }}>
+          <div className="flex-1 w-full overflow-hidden" style={{ minHeight: 0 }}>
             <ApexChart
-              type="bar"
+              type="line"
               width="100%"
               height="100%"
-              style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
-              series={[ 
+              series={[
                 {
                   name: "Receitas",
+                  type: "column",
                   data: barData.map((item) => item.income),
                 },
                 {
                   name: "Despesas",
+                  type: "column",
                   data: barData.map((item) => item.expense),
+                },
+                {
+                  name: "Saldo",
+                  type: "line",
+                  data: barData.map((item) => item.income - item.expense),
                 },
               ]}
               options={{
                 chart: { background: "transparent", stacked: false, toolbar: { show: false } },
                 theme: { mode: "dark" },
+                stroke: { width: [1, 1, 3], curve: "smooth" },
+                plotOptions: { bar: { borderRadius: 6, columnWidth: "40%" } },
+                colors: ["#3ecf8e", "#ed4245", "#3b82f6"],
+                dataLabels: { enabled: false },
                 xaxis: {
                   categories: barData.map((item) => item.month),
                   labels: { style: { colors: "var(--foreground)" } },
                 },
-                yaxis: { labels: { style: { colors: "var(--foreground)" } } },
-                legend: { labels: { colors: "var(--foreground)" } },
-                colors: ["#43b581", "#ed4245"],
+                yaxis: [
+                  {
+                    seriesName: "Receitas",
+                    labels: { style: { colors: "var(--foreground)" } },
+                  },
+                  {
+                    seriesName: "Receitas",
+                    show: false,
+                  },
+                  {
+                    seriesName: "Saldo",
+                    opposite: true,
+                    labels: { style: { colors: "var(--foreground)" } },
+                  },
+                ],
+                legend: {
+                  show: false,
+                },
                 grid: { borderColor: "#2e2e2e", strokeDashArray: 4 },
                 tooltip: { theme: "dark" },
-                plotOptions: { bar: { borderRadius: 6, columnWidth: '40%' } },
               }}
             />
+          </div>
+          <div className="flex items-center justify-center gap-5 mt-1">
+            {[
+              { label: "Receitas", color: "#3ecf8e" },
+              { label: "Despesas", color: "#ed4245" },
+              { label: "Saldo", color: "#3b82f6" },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-3 rounded-full" style={{ background: item.color }} />
+                <span className="text-xs text-[var(--foreground)]">{item.label}</span>
+              </div>
+            ))}
           </div>
         </div>
 
