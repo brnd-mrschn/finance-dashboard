@@ -70,3 +70,47 @@ html.light ::-webkit-scrollbar {
 html.light ::-webkit-scrollbar-thumb {
   background: #ccc;
 }
+
+/* Magic Bento — border glow effect */
+.magic-card {
+  --glow-x: 50%;
+  --glow-y: 50%;
+  --glow-intensity: 0;
+  --glow-radius: 250px;
+  --glow-r: 62;
+  --glow-g: 207;
+  --glow-b: 142;
+  position: relative;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.magic-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 20px rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.08),
+    0 0 30px rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.06);
+}
+
+.magic-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1.5px;
+  background: radial-gradient(
+    var(--glow-radius) circle at var(--glow-x) var(--glow-y),
+    rgba(var(--glow-r), var(--glow-g), var(--glow-b), calc(var(--glow-intensity) * 0.8)) 0%,
+    rgba(var(--glow-r), var(--glow-g), var(--glow-b), calc(var(--glow-intensity) * 0.35)) 30%,
+    transparent 60%
+  );
+  border-radius: inherit;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}

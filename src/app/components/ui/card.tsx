@@ -19,7 +19,7 @@ const typeColors = {
     accent: "text-[#ed4245]",
   },
   info: {
-    accent: "text-[var(--muted-foreground)]",
+    accent: "text-[#eab308]",
   },
 };
 

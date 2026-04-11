@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { FiSearch, FiX } from "react-icons/fi";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -10,84 +10,77 @@ const ApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 import { Card } from "@/app/components/ui/card";
 import { DropdownFilter } from "@/app/components/ui/dropdown-filter";
 
-function GlassCard({ children }: { children: React.ReactNode }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [hovering, setHovering] = useState(false);
-  const rows = 5;
-  const columns = 20;
+const SPOTLIGHT_RADIUS = 250;
+
+function SpotlightGrid({ children }: { children: React.ReactNode }) {
+  const gridRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number>(0);
+
+  const updateCards = useCallback((mx: number, my: number) => {
+    if (!gridRef.current) return;
+    const cards = gridRef.current.querySelectorAll<HTMLElement>(".magic-card");
+    const proximity = SPOTLIGHT_RADIUS * 0.5;
+    const fadeDistance = SPOTLIGHT_RADIUS * 0.75;
+
+    cards.forEach((card) => {
+      const rect = card.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dist = Math.max(0, Math.hypot(mx - cx, my - cy) - Math.max(rect.width, rect.height) / 2);
+
+      let intensity = 0;
+      if (dist <= proximity) intensity = 1;
+      else if (dist <= fadeDistance) intensity = (fadeDistance - dist) / (fadeDistance - proximity);
+
+      const rx = ((mx - rect.left) / rect.width) * 100;
+      const ry = ((my - rect.top) / rect.height) * 100;
+
+      card.style.setProperty("--glow-x", `${rx}%`);
+      card.style.setProperty("--glow-y", `${ry}%`);
+      card.style.setProperty("--glow-intensity", intensity.toString());
+    });
+  }, []);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    const onMove = (e: PointerEvent) => {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        if (!gridRef.current) return;
+        const section = gridRef.current.getBoundingClientRect();
+        const inside =
+          e.clientX >= section.left &&
+          e.clientX <= section.right &&
+          e.clientY >= section.top &&
+          e.clientY <= section.bottom;
 
-    const items = container.querySelectorAll<HTMLSpanElement>(".ml");
-
-    const onPointerMove = (e: PointerEvent) => {
-      items.forEach((item) => {
-        const rect = item.getBoundingClientRect();
-        const centerX = rect.x + rect.width / 2;
-        const centerY = rect.y + rect.height / 2;
-        const b = e.clientX - centerX;
-        const a = e.clientY - centerY;
-        const c = Math.sqrt(a * a + b * b) || 1;
-        const r =
-          ((Math.acos(b / c) * 180) / Math.PI) *
-          (e.clientY > centerY ? 1 : -1);
-        item.style.setProperty("--rotate", `${r}deg`);
+        if (!inside) {
+          gridRef.current.querySelectorAll<HTMLElement>(".magic-card").forEach((c) =>
+            c.style.setProperty("--glow-intensity", "0")
+          );
+          return;
+        }
+        updateCards(e.clientX, e.clientY);
       });
     };
 
-    window.addEventListener("pointermove", onPointerMove);
+    const onLeave = () => {
+      gridRef.current?.querySelectorAll<HTMLElement>(".magic-card").forEach((c) =>
+        c.style.setProperty("--glow-intensity", "0")
+      );
+    };
 
-    if (items.length) {
-      const mid = Math.floor(items.length / 2);
-      const rect = items[mid].getBoundingClientRect();
-      onPointerMove({ clientX: rect.x, clientY: rect.y } as PointerEvent);
-    }
-
-    return () => window.removeEventListener("pointermove", onPointerMove);
-  }, []);
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("mouseleave", onLeave);
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("mouseleave", onLeave);
+    };
+  }, [updateCards]);
 
   return (
-    <div
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
-      className="relative overflow-hidden rounded-lg border border-[rgba(255,255,255,0.06)] transition-all duration-300 hover:border-[rgba(255,255,255,0.12)]"
-      style={{
-        backdropFilter: "blur(12px) saturate(140%)",
-        WebkitBackdropFilter: "blur(12px) saturate(140%)",
-      }}
-    >
+    <div ref={gridRef} className="relative grid grid-cols-1 gap-6 md:grid-cols-3">
       {children}
-      <div
-        ref={containerRef}
-        className="pointer-events-none absolute inset-0 transition-opacity duration-300"
-        style={{
-          opacity: hovering ? 1 : 0,
-          display: "grid",
-          gridTemplateColumns: `repeat(${columns}, 1fr)`,
-          gridTemplateRows: `repeat(${rows}, 1fr)`,
-          justifyItems: "center",
-          alignItems: "center",
-        }}
-      >
-        {Array.from({ length: rows * columns }, (_, i) => (
-          <span
-            key={i}
-            className="ml block"
-            style={
-              {
-                transformOrigin: "center",
-                willChange: "transform",
-                transform: "rotate(var(--rotate, -10deg))",
-                backgroundColor: "rgba(255,255,255,0.1)",
-                width: "1px",
-                height: "0.75rem",
-              } as React.CSSProperties
-            }
-          />
-        ))}
-      </div>
     </div>
   );
 }
@@ -99,6 +92,7 @@ type Transaction = {
   amount: number;
   type: "INCOME" | "EXPENSE";
   categoryId: string;
+  originId?: string | null;
 };
 
 type Category = {
@@ -107,9 +101,15 @@ type Category = {
   expected?: number | null;
 };
 
+type Origin = {
+  id: string;
+  name: string;
+};
+
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [origins, setOrigins] = useState<Origin[]>([]);
   const [error, setError] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
@@ -149,6 +149,11 @@ export default function Dashboard() {
     fetch("/api/categories")
       .then((res) => res.json())
       .then((data: Category[]) => setCategories(data))
+      .catch(console.error);
+
+    fetch("/api/origins")
+      .then((res) => res.json())
+      .then((data: Origin[]) => setOrigins(data))
       .catch(console.error);
   }, []);
 
@@ -239,6 +244,27 @@ export default function Dashboard() {
     })
     .filter((item) => item.value > 0);
 
+  const expenseByOrigin = origins
+    .map((origin) => {
+      const total = filteredTransactions
+        .filter(
+          (transaction) =>
+            transaction.originId === origin.id && transaction.type === "EXPENSE"
+        )
+        .reduce((accumulator, transaction) => accumulator + transaction.amount, 0);
+      return { name: origin.name, value: total };
+    })
+    .filter((item) => item.value > 0);
+
+  const noOriginExpense = filteredTransactions
+    .filter((t) => !t.originId && t.type === "EXPENSE")
+    .reduce((acc, t) => acc + t.amount, 0);
+  if (noOriginExpense > 0) {
+    expenseByOrigin.push({ name: "Sem origem", value: noOriginExpense });
+  }
+
+  const originColors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8"];
+
   const monthlyData = filteredTransactions.reduce<
     Record<string, { month: string; income: number; expense: number }>
   >((accumulator, transaction) => {
@@ -270,7 +296,7 @@ export default function Dashboard() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-end">
 
 
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-end">
@@ -465,86 +491,138 @@ export default function Dashboard() {
       )}
 
       <motion.div
-        className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-3"
+        className="mb-10"
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4 }}
       >
-        <GlassCard>
-          <Card
-            title="Saldo"
-            value={balance.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            })}
-            type={balance >= 0 ? "success" : "danger"}
-          />
-        </GlassCard>
+        <SpotlightGrid>
+          <div
+            className="magic-card rounded-lg"
+            style={{
+              "--glow-r": balance > 0 ? 62 : balance < 0 ? 237 : 234,
+              "--glow-g": balance > 0 ? 207 : balance < 0 ? 66 : 179,
+              "--glow-b": balance > 0 ? 142 : balance < 0 ? 69 : 8,
+            } as React.CSSProperties}
+          >
+            <Card
+              title="Saldo"
+              value={balance.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
+              type={balance > 0 ? "success" : balance < 0 ? "danger" : "info"}
+            />
+          </div>
 
-        <GlassCard>
-          <Card
-            title="Receitas"
-            value={income.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            })}
-            type="success"
-          />
-        </GlassCard>
+          <div
+            className="magic-card rounded-lg"
+            style={{
+              "--glow-r": 62,
+              "--glow-g": 207,
+              "--glow-b": 142,
+            } as React.CSSProperties}
+          >
+            <Card
+              title="Receitas"
+              value={income.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
+              type="success"
+            />
+          </div>
 
-        <GlassCard>
-          <Card
-            title="Despesas"
-            value={expense.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            })}
-            type="danger"
-          />
-        </GlassCard>
+          <div
+            className="magic-card rounded-lg"
+            style={{
+              "--glow-r": 237,
+              "--glow-g": 66,
+              "--glow-b": 69,
+            } as React.CSSProperties}
+          >
+            <Card
+              title="Despesas"
+              value={expense.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
+              type="danger"
+            />
+          </div>
+        </SpotlightGrid>
       </motion.div>
 
       {error && <p className="text-[#ed4245]">{error}</p>}
 
       <motion.div
-        className="mb-10 grid grid-cols-1 gap-8 md:grid-cols-2"
-        style={{ gridTemplateColumns: '1fr 1fr' }}
+        className="mb-10 grid grid-cols-1 gap-8 lg:grid-cols-2"
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.6 }}
       >
 
-        <div className="flex flex-col rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 h-[420px]">
-          <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
-            Despesas por Categoria
-          </h3>
-          <div className="relative flex-1 w-full h-full" style={{ minHeight: 0, minWidth: 0 }}>
-            <ApexChart
-              type="donut"
-              width="100%"
-              height="100%"
-              style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
-              series={expenseByCategory.map((item) => item.value)}
-              options={{
-                labels: expenseByCategory.map((item) => item.name),
-                colors,
-                legend: { show: true, labels: { colors: "var(--foreground)" } },
-                dataLabels: { enabled: false },
-                tooltip: { theme: "dark" },
-                chart: { background: "transparent" },
-                stroke: { width: 0 },
-                plotOptions: {
-                  pie: {
-                    donut: { size: '65%' },
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 h-[420px] grid grid-cols-2 gap-4">
+          <div className="flex flex-col min-h-0">
+            <h3 className="mb-2 text-center text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">
+              Despesas por Categoria
+            </h3>
+            <div className="relative flex-1 w-full" style={{ minHeight: 0, minWidth: 0 }}>
+              <ApexChart
+                type="donut"
+                width="100%"
+                height="100%"
+                style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
+                series={expenseByCategory.map((item) => item.value)}
+                options={{
+                  labels: expenseByCategory.map((item) => item.name),
+                  colors,
+                  legend: { show: true, position: "bottom", labels: { colors: "var(--foreground)" }, fontSize: "11px" },
+                  dataLabels: { enabled: false },
+                  tooltip: { theme: "dark" },
+                  chart: { background: "transparent" },
+                  stroke: { width: 0 },
+                  plotOptions: {
+                    pie: {
+                      donut: { size: '60%' },
+                    },
                   },
-                },
-              }}
-            />
+                }}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col min-h-0">
+            <h3 className="mb-2 text-center text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">
+              Despesas por Origem
+            </h3>
+            <div className="relative flex-1 w-full" style={{ minHeight: 0, minWidth: 0 }}>
+              <ApexChart
+                type="donut"
+                width="100%"
+                height="100%"
+                style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
+                series={expenseByOrigin.map((item) => item.value)}
+                options={{
+                  labels: expenseByOrigin.map((item) => item.name),
+                  colors: originColors,
+                  legend: { show: true, position: "bottom", labels: { colors: "var(--foreground)" }, fontSize: "11px" },
+                  dataLabels: { enabled: false },
+                  tooltip: { theme: "dark" },
+                  chart: { background: "transparent" },
+                  stroke: { width: 0 },
+                  plotOptions: {
+                    pie: {
+                      donut: { size: '60%' },
+                    },
+                  },
+                }}
+              />
+            </div>
           </div>
         </div>
 
         <div className="flex flex-col rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 h-[420px]">
-          <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
+          <h3 className="mb-4 text-center text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">
             Gastos Esperados vs Gastos Reais
           </h3>
           <div className="relative flex-1 w-full h-full" style={{ minHeight: 0, minWidth: 0 }}>
@@ -597,7 +675,7 @@ export default function Dashboard() {
         </div>
 
         <div className="flex flex-col rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 h-[420px]">
-          <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
+          <h3 className="mb-4 text-center text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">
             Receitas vs Despesas Mensais
           </h3>
           <div className="relative flex-1 w-full h-full" style={{ minHeight: 0, minWidth: 0 }}>
@@ -635,7 +713,7 @@ export default function Dashboard() {
         </div>
 
         <div className="min-h-[320px] h-[420px] rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 flex flex-col">
-          <h3 className="mb-4 text-center text-lg font-semibold text-[var(--foreground)]">
+          <h3 className="mb-4 text-center text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">
             Gastos por Categoria
           </h3>
           <ul className="flex-1 overflow-y-auto space-y-1">
