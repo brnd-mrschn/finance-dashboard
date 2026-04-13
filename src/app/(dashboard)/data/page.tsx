@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { FiTrash2, FiPlus, FiChevronUp, FiChevronDown } from "react-icons/fi";
+import { FiTrash2, FiPlus, FiChevronUp, FiChevronDown, FiUpload } from "react-icons/fi";
+import { parseFile, type ParsedTransaction } from "@/lib/import-parser";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function DataPage() {
@@ -23,6 +24,15 @@ export default function DataPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [catSortField, setCatSortField] = useState<string>('name');
   const [catSortDir, setCatSortDir] = useState<'asc' | 'desc'>('asc');
+  const [importModal, setImportModal] = useState(false);
+  const [importData, setImportData] = useState<ParsedTransaction[]>([]);
+  const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
+  const [importing, setImporting] = useState(false);
+  const [importFileName, setImportFileName] = useState('');
+  const [importOriginId, setImportOriginId] = useState('');
+  const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleSort = (field: string) => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -107,20 +117,86 @@ export default function DataPage() {
           >Categorias</button>
         </div>
         {view === 'transactions' && (
-          <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)]"
-            onClick={() => setNewTransaction({ description: "", date: new Date().toISOString().slice(0,10), amount: 0, type: "EXPENSE", categoryId: "", originId: "" })}
-          >
-            <FiPlus className="text-sm" /> Nova Transação
-          </button>
+          <div className="flex gap-2 items-center">
+            {selectedTransactions.size > 0 && (
+              <button
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#ed4245] text-white border border-[#ed4245] hover:bg-[#d63638] shadow-[0_0_0_0_rgba(237,66,69,0)] hover:shadow-[0_0_8px_0_rgba(237,66,69,0.25)]"
+                onClick={() => {
+                  setConfirmModal({
+                    message: `Tem certeza que deseja remover ${selectedTransactions.size} transação(ões)?`,
+                    onConfirm: async () => {
+                      setConfirmModal(null);
+                      setSaving(true);
+                      const ids = Array.from(selectedTransactions);
+                      await fetch('/api/transactions/bulk-delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids }),
+                      });
+                      setTransactions((prev) => prev.filter((tr) => !selectedTransactions.has(tr.id)));
+                      setSelectedTransactions(new Set());
+                      setSaving(false);
+                      setToast(`${ids.length} transação(ões) removida(s)!`);
+                      if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                      toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                    },
+                  });
+                }}
+              >
+                <FiTrash2 size={12} /> Excluir {selectedTransactions.size}
+              </button>
+            )}
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-transparent text-[var(--muted-foreground)] border border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)] hover:bg-[var(--surface-alt)]"
+              onClick={() => { setImportModal(true); setImportData([]); setImportSelected(new Set()); setImportFileName(''); setImportOriginId(''); }}
+            >
+              <FiUpload className="text-sm" /> Importar
+            </button>
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)]"
+              onClick={() => setNewTransaction({ description: "", date: new Date().toISOString().slice(0,10), amount: 0, type: "EXPENSE", categoryId: "", originId: "" })}
+            >
+              <FiPlus className="text-sm" /> Nova Transação
+            </button>
+          </div>
         )}
         {view === 'categories' && (
-          <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)]"
-            onClick={() => setNewCategory({ name: "", group: "", subgroup: "", type: "EXPENSE", expected: "" })}
-          >
-            <FiPlus className="text-sm" /> Nova Categoria
-          </button>
+          <div className="flex gap-2 items-center">
+            {selectedCategories.size > 0 && (
+              <button
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#ed4245] text-white border border-[#ed4245] hover:bg-[#d63638] shadow-[0_0_0_0_rgba(237,66,69,0)] hover:shadow-[0_0_8px_0_rgba(237,66,69,0.25)]"
+                onClick={() => {
+                  setConfirmModal({
+                    message: `Tem certeza que deseja remover ${selectedCategories.size} categoria(s)?`,
+                    onConfirm: async () => {
+                      setConfirmModal(null);
+                      setSaving(true);
+                      const ids = Array.from(selectedCategories);
+                      await fetch('/api/categories/bulk-delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids }),
+                      });
+                      setCategories((prev) => prev.filter((cat) => !selectedCategories.has(cat.id)));
+                      setSelectedCategories(new Set());
+                      setSaving(false);
+                      setToast(`${ids.length} categoria(s) removida(s)!`);
+                      if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                      toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                    },
+                  });
+                }}
+              >
+                <FiTrash2 size={12} /> Excluir {selectedCategories.size}
+              </button>
+            )}
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)]"
+              onClick={() => setNewCategory({ name: "", group: "", subgroup: "", type: "EXPENSE", expected: "" })}
+            >
+              <FiPlus className="text-sm" /> Nova Categoria
+            </button>
+          </div>
         )}
       </div>
       {error && <p className="text-[#ed4245]">{error}</p>}
@@ -131,18 +207,30 @@ export default function DataPage() {
               <table className="min-w-full text-sm" style={{ tableLayout: "fixed" }}>
                 <thead>
                   <tr className="border-y border-[var(--border)]">
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[22%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('description')}>Descrição<SortIcon field="description" current={sortField} dir={sortDir} /></th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('date')}>Data<SortIcon field="date" current={sortField} dir={sortDir} /></th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('amount')}>Valor<SortIcon field="amount" current={sortField} dir={sortDir} /></th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[12%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('type')}>Tipo<SortIcon field="type" current={sortField} dir={sortDir} /></th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[16%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('categoryId')}>Categoria<SortIcon field="categoryId" current={sortField} dir={sortDir} /></th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('originId')}>Origem<SortIcon field="originId" current={sortField} dir={sortDir} /></th>
-                    <th className="px-4 py-2.5 w-[8%]"></th>
+                    <th className="px-2 py-2.5 w-[4%] text-center">
+                      <input
+                        type="checkbox"
+                        className="accent-[#3ecf8e]"
+                        checked={transactions.length > 0 && selectedTransactions.size === transactions.length}
+                        onChange={() => {
+                          if (selectedTransactions.size === transactions.length) setSelectedTransactions(new Set());
+                          else setSelectedTransactions(new Set(transactions.map(t => t.id)));
+                        }}
+                      />
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[20%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('description')}>Descrição<SortIcon field="description" current={sortField} dir={sortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[13%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('date')}>Data<SortIcon field="date" current={sortField} dir={sortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[13%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('amount')}>Valor<SortIcon field="amount" current={sortField} dir={sortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[11%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('type')}>Tipo<SortIcon field="type" current={sortField} dir={sortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[15%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('categoryId')}>Categoria<SortIcon field="categoryId" current={sortField} dir={sortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[13%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('originId')}>Origem<SortIcon field="originId" current={sortField} dir={sortDir} /></th>
+                    <th className="px-4 py-2.5 w-[7%]"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {newTransaction && (
                     <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
+                      <td className="px-2 py-1.5"></td>
                       <td className="px-3 py-1.5">
                         <input
                           className="edit-field"
@@ -260,7 +348,19 @@ export default function DataPage() {
                     </tr>
                   )}
                   {sortedTransactions.map((t) => (
-                    <tr key={t.id} style={{ height: 40 }} className={`border-b border-[var(--border)] transition-colors duration-200 ${editingTransaction === t.id ? 'bg-[var(--surface-alt)]' : 'hover:bg-[var(--surface-alt)]'}`}>
+                    <tr key={t.id} style={{ height: 40 }} className={`border-b border-[var(--border)] transition-colors duration-200 ${selectedTransactions.has(t.id) ? 'bg-[var(--surface-alt)]' : editingTransaction === t.id ? 'bg-[var(--surface-alt)]' : 'hover:bg-[var(--surface-alt)]'}`}>
+                      <td className="px-2 py-1.5 text-center">
+                        <input
+                          type="checkbox"
+                          className="accent-[#3ecf8e]"
+                          checked={selectedTransactions.has(t.id)}
+                          onChange={() => {
+                            const next = new Set(selectedTransactions);
+                            if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
+                            setSelectedTransactions(next);
+                          }}
+                        />
+                      </td>
                       {/* Descrição */}
                       <td className="px-3 py-1.5">
                         {editingTransaction === t.id && editingField === 'description' ? (
@@ -508,17 +608,29 @@ export default function DataPage() {
               <table className="min-w-full text-sm" style={{ tableLayout: "fixed" }}>
                 <thead>
                   <tr className="border-y border-[var(--border)]">
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[22%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('name')}>Nome<SortIcon field="name" current={catSortField} dir={catSortDir} /></th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[20%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('group')}>Grupo<SortIcon field="group" current={catSortField} dir={catSortDir} /></th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[20%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('subgroup')}>Subgrupo<SortIcon field="subgroup" current={catSortField} dir={catSortDir} /></th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[14%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('type')}>Tipo<SortIcon field="type" current={catSortField} dir={catSortDir} /></th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[16%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('expected')}>Esperado<SortIcon field="expected" current={catSortField} dir={catSortDir} /></th>
-                    <th className="px-4 py-2.5 w-[8%]"></th>
+                    <th className="px-2 py-2.5 w-[4%] text-center">
+                      <input
+                        type="checkbox"
+                        className="accent-[#3ecf8e]"
+                        checked={categories.length > 0 && selectedCategories.size === categories.length}
+                        onChange={() => {
+                          if (selectedCategories.size === categories.length) setSelectedCategories(new Set());
+                          else setSelectedCategories(new Set(categories.map(c => c.id)));
+                        }}
+                      />
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[20%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('name')}>Nome<SortIcon field="name" current={catSortField} dir={catSortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[18%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('group')}>Grupo<SortIcon field="group" current={catSortField} dir={catSortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[18%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('subgroup')}>Subgrupo<SortIcon field="subgroup" current={catSortField} dir={catSortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[13%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('type')}>Tipo<SortIcon field="type" current={catSortField} dir={catSortDir} /></th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[15%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('expected')}>Esperado<SortIcon field="expected" current={catSortField} dir={catSortDir} /></th>
+                    <th className="px-4 py-2.5 w-[7%]"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {newCategory && (
                     <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
+                      <td className="px-2 py-1.5"></td>
                       <td className="px-3 py-1.5">
                         <input
                           className="edit-field"
@@ -617,7 +729,19 @@ export default function DataPage() {
                     </tr>
                   )}
                   {sortedCategories.map((c) => (
-                    <tr key={c.id} style={{ height: 40 }} className={`border-b border-[var(--border)] transition-colors duration-200 ${editingCategory === c.id ? 'bg-[var(--surface-alt)]' : 'hover:bg-[var(--surface-alt)]'}`}>
+                    <tr key={c.id} style={{ height: 40 }} className={`border-b border-[var(--border)] transition-colors duration-200 ${selectedCategories.has(c.id) ? 'bg-[var(--surface-alt)]' : editingCategory === c.id ? 'bg-[var(--surface-alt)]' : 'hover:bg-[var(--surface-alt)]'}`}>
+                      <td className="px-2 py-1.5 text-center">
+                        <input
+                          type="checkbox"
+                          className="accent-[#3ecf8e]"
+                          checked={selectedCategories.has(c.id)}
+                          onChange={() => {
+                            const next = new Set(selectedCategories);
+                            if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+                            setSelectedCategories(next);
+                          }}
+                        />
+                      </td>
                       <td className="px-3 py-1.5">
                         {editingCategory === c.id && editingField === 'name' ? (
                           <input
@@ -817,6 +941,172 @@ export default function DataPage() {
           </span>
         </div>
       )}
+      <AnimatePresence>
+        {importModal && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => { if (!importing) setImportModal(false); }}
+          >
+            <motion.div
+              className="bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-5 border-b border-[var(--border)]">
+                <h3 className="text-sm font-medium text-[var(--foreground)] mb-3">Importar Transações</h3>
+                <p className="text-xs text-[var(--muted-foreground)] mb-3">Selecione um arquivo CSV ou OFX exportado do seu banco.</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,.ofx,.qfx"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setImportFileName(file.name);
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      const content = ev.target?.result as string;
+                      const parsed = parseFile(content, file.name);
+                      setImportData(parsed);
+                      setImportSelected(new Set(parsed.map((_, i) => i)));
+                    };
+                    reader.readAsText(file, 'utf-8');
+                    e.target.value = '';
+                  }}
+                />
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[var(--surface-alt)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--muted-foreground)]"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <FiUpload size={12} /> {importFileName || 'Selecionar arquivo'}
+                </button>
+                <div className="mt-3">
+                  <label className="text-xs text-[var(--muted-foreground)] mb-1 block">Origem das transações</label>
+                  <select
+                    className="edit-field w-full max-w-[200px]"
+                    value={importOriginId}
+                    onChange={(e) => setImportOriginId(e.target.value)}
+                  >
+                    <option value="">Sem origem</option>
+                    {origins.map((o) => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {importData.length > 0 && (
+                <>
+                  <div className="px-5 py-2 border-b border-[var(--border)] flex items-center justify-between">
+                    <span className="text-xs text-[var(--muted-foreground)]">
+                      {importSelected.size} de {importData.length} selecionadas
+                    </span>
+                    <button
+                      className="text-xs text-[var(--primary)] hover:underline"
+                      onClick={() => {
+                        if (importSelected.size === importData.length) setImportSelected(new Set());
+                        else setImportSelected(new Set(importData.map((_, i) => i)));
+                      }}
+                    >{importSelected.size === importData.length ? 'Desmarcar todas' : 'Selecionar todas'}</button>
+                  </div>
+                  <div className="overflow-y-auto flex-1 min-h-0">
+                    <table className="min-w-full text-xs">
+                      <thead className="sticky top-0 bg-[var(--surface)] z-10">
+                        <tr className="border-b border-[var(--border)]">
+                          <th className="px-4 py-2 w-10"></th>
+                          <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Data</th>
+                          <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Descrição</th>
+                          <th className="px-4 py-2 text-right text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Valor</th>
+                          <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Tipo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importData.map((t, i) => (
+                          <tr
+                            key={i}
+                            className={`border-b border-[var(--border)] cursor-pointer transition-colors ${importSelected.has(i) ? 'bg-[var(--surface)]' : 'bg-[var(--surface)] opacity-40'}`}
+                            onClick={() => {
+                              const next = new Set(importSelected);
+                              if (next.has(i)) next.delete(i); else next.add(i);
+                              setImportSelected(next);
+                            }}
+                          >
+                            <td className="px-4 py-1.5 text-center">
+                              <input
+                                type="checkbox"
+                                checked={importSelected.has(i)}
+                                readOnly
+                                className="accent-[#3ecf8e] pointer-events-none"
+                              />
+                            </td>
+                            <td className="px-4 py-1.5 text-[var(--foreground)]">{new Date(t.date + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                            <td className="px-4 py-1.5 text-[var(--foreground)] truncate max-w-[200px]">{t.description}</td>
+                            <td className={`px-4 py-1.5 text-right ${t.type === 'INCOME' ? 'text-[#43b581]' : 'text-[#ed4245]'}`}>
+                              {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </td>
+                            <td className="px-4 py-1.5">
+                              <span className={`text-[10px] font-medium uppercase ${t.type === 'INCOME' ? 'text-[#43b581]' : 'text-[#ed4245]'}`}>
+                                {t.type === 'INCOME' ? 'Entrada' : 'Saída'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+              {importData.length === 0 && importFileName && (
+                <div className="p-5">
+                  <p className="text-xs text-[#ed4245]">Nenhuma transação encontrada no arquivo. Verifique se o formato é compatível (CSV com colunas Data, Descrição, Valor ou OFX padrão).</p>
+                </div>
+              )}
+              <div className="p-4 border-t border-[var(--border)] flex justify-end gap-2">
+                <button
+                  className="px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-transparent text-[var(--muted-foreground)] border border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)] hover:bg-[var(--surface-alt)]"
+                  onClick={() => setImportModal(false)}
+                  disabled={importing}
+                >Cancelar</button>
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)] disabled:opacity-50"
+                  disabled={importing || importSelected.size === 0}
+                  onClick={async () => {
+                    setImporting(true);
+                    const selected = importData.filter((_, i) => importSelected.has(i));
+                    const res = await fetch('/api/transactions/import', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ transactions: selected, originId: importOriginId || null }),
+                    });
+                    const result = await res.json();
+                    if (res.ok) {
+                      const updated = await fetch('/api/transactions').then(r => r.json());
+                      setTransactions(updated);
+                      setImportModal(false);
+                      setToast(`${result.imported} transações importadas!`);
+                      if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                      toastTimeout.current = setTimeout(() => setToast(null), 2500);
+                    } else {
+                      setToast(result.error || 'Erro ao importar');
+                      if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                      toastTimeout.current = setTimeout(() => setToast(null), 2500);
+                    }
+                    setImporting(false);
+                  }}
+                >
+                  {importing ? 'Importando...' : `Importar ${importSelected.size} transações`}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {confirmModal && (
           <motion.div
