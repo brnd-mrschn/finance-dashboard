@@ -141,6 +141,7 @@ type Category = {
   id: string;
   name: string;
   expected?: number | null;
+  color?: string | null;
 };
 
 type Origin = {
@@ -201,6 +202,10 @@ export default function Dashboard() {
 
   const getCategoryName = (categoryId: string) => {
     return categories.find((category) => category.id === categoryId)?.name ?? "Sem categoria";
+  };
+
+  const getCategoryColor = (categoryId: string) => {
+    return categories.find((category) => category.id === categoryId)?.color ?? null;
   };
 
   const matchesSearch = (transaction: Transaction, rawTerm: string) => {
@@ -821,7 +826,10 @@ export default function Dashboard() {
           <SmoothScrollList className="flex-1 overflow-hidden space-y-1">
             {categories.map((category) => (
               <li key={category.id} className="flex justify-between text-[var(--foreground)]">
-                <span>{category.name}</span>
+                <span className="flex items-center gap-2">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: category.color || 'var(--muted-foreground)' }} />
+                  {category.name}
+                </span>
                 <span className="pr-6">
                   {filteredTransactions
                     .filter(
@@ -865,8 +873,16 @@ export default function Dashboard() {
                 >
                   <div>
                     <p className="font-medium text-[var(--foreground)]">{transaction.description}</p>
-                    <p className="text-xs text-[var(--muted-foreground)]">
-                      {new Date(transaction.date).toLocaleDateString("pt-BR")} · {getCategoryName(transaction.categoryId)}
+                    <p className="text-xs text-[var(--muted-foreground)] flex items-center gap-1.5">
+                      {new Date(transaction.date).toLocaleDateString("pt-BR")} ·{" "}
+                      {getCategoryColor(transaction.categoryId) ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium" style={{ background: getCategoryColor(transaction.categoryId) + '20', color: getCategoryColor(transaction.categoryId)!, border: `1px solid ${getCategoryColor(transaction.categoryId)}40` }}>
+                          <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: getCategoryColor(transaction.categoryId)! }} />
+                          {getCategoryName(transaction.categoryId)}
+                        </span>
+                      ) : (
+                        <span className="text-[var(--muted-foreground)]">{getCategoryName(transaction.categoryId)}</span>
+                      )}
                     </p>
                   </div>
 

@@ -528,8 +528,17 @@ export default function DataPage() {
                             ))}
                           </select>
                         ) : (
-                          <div onClick={() => { setEditingTransaction(t.id); setEditingField('categoryId'); }} className="cursor-pointer hover:underline w-full min-h-[24px] flex items-center">
-                            {categories.find((c) => c.id === t.categoryId)?.name || <span className="italic text-gray-400">Sem categoria</span>}
+                          <div onClick={() => { setEditingTransaction(t.id); setEditingField('categoryId'); }} className="cursor-pointer w-full min-h-[24px] flex items-center">
+                            {(() => {
+                              const cat = categories.find((c) => c.id === t.categoryId);
+                              if (!cat) return <span className="italic text-gray-400">Sem categoria</span>;
+                              return (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium" style={{ background: (cat.color || '#888') + '20', color: cat.color || '#888', border: `1px solid ${cat.color || '#888'}40` }}>
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cat.color || '#888' }} />
+                                  {cat.name}
+                                </span>
+                              );
+                            })()}
                           </div>
                         )}
                       </td>
@@ -770,7 +779,10 @@ export default function DataPage() {
                             }}
                           />
                         ) : (
-                          <span onClick={() => { setEditingCategory(c.id); setEditingField('name'); }} className="cursor-pointer hover:underline">{c.name}</span>
+                          <span onClick={() => { setEditingCategory(c.id); setEditingField('name'); }} className="cursor-pointer hover:underline flex items-center gap-2">
+                            <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: c.color || 'var(--muted-foreground)' }} />
+                            {c.name}
+                          </span>
                         )}
                       </td>
                       <td className="px-3 py-1.5">

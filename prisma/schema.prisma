@@ -7,31 +7,25 @@ datasource db {
 }
 
 model User {
-  id    String @id @default(uuid())
-  email String @unique
-
+  id           String        @id @default(uuid())
+  email        String        @unique
+  createdAt    DateTime      @default(now())
   transactions Transaction[]
-
-  createdAt DateTime @default(now())
 }
 
 model Transaction {
-  id          String   @id @default(uuid())
-  date        DateTime
-  description String
+  id          String          @id @default(uuid())
   amount      Float
+  description String
+  date        DateTime
+  userId      String
+  categoryId  String?
+  createdAt   DateTime        @default(now())
   type        TransactionType
-
-  originId   String?
-  origin     Origin? @relation(fields: [originId], references: [id])
-
-  categoryId String?
-  category   Category? @relation(fields: [categoryId], references: [id])
-
-  userId String
-  user   User @relation(fields: [userId], references: [id])
-
-  createdAt DateTime @default(now())
+  originId    String?
+  category    Category?       @relation(fields: [categoryId], references: [id])
+  origin      Origin?         @relation(fields: [originId], references: [id])
+  user        User            @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([categoryId])
@@ -40,30 +34,27 @@ model Transaction {
 }
 
 model Category {
-  id       String @id @default(uuid())
-  name     String
-  group    String
-  subgroup String
-  type     TransactionType
-  expected Float?
-
+  id           String          @id @default(uuid())
+  name         String
+  group        String
+  subgroup     String
+  type         TransactionType
+  createdAt    DateTime        @default(now())
+  expected     Float?
+  color        String?
   transactions Transaction[]
 
-  createdAt DateTime @default(now())
-
   @@index([type])
+}
+
+model Origin {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
 }
 
 enum TransactionType {
   INCOME
   EXPENSE
-}
-
-model Origin {
-  id   String @id @default(uuid())
-  name String @unique
-
-  transactions Transaction[]
-
-  createdAt DateTime @default(now())
 }
