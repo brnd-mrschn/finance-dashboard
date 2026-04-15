@@ -106,6 +106,7 @@ export default function DataPage() {
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const checkboxClassName = "h-4 w-4 cursor-pointer appearance-none rounded-[5px] border border-[color:color-mix(in_srgb,var(--border)_72%,transparent)] bg-[color:color-mix(in_srgb,var(--surface-alt)_48%,transparent)] opacity-75 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-200 hover:opacity-100 hover:border-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--primary)_35%,transparent)] checked:border-[var(--primary)] checked:bg-[var(--primary)] checked:opacity-100";
 
   const updateNewTransaction = <K extends keyof TransactionForm>(field: K, value: TransactionForm[K]) => {
     setNewTransaction((current) => (current ? { ...current, [field]: value } : current));
@@ -280,30 +281,29 @@ export default function DataPage() {
               <table className="min-w-full text-sm" style={{ tableLayout: "fixed" }}>
                 <thead>
                   <tr className="border-y border-[var(--border)]">
-                    <th className="px-2 py-2.5 w-[4%] text-center">
-                      <input
-                        type="checkbox"
-                        className="accent-[#3ecf8e]"
-                        checked={transactions.length > 0 && selectedTransactions.size === transactions.length}
-                        onChange={() => {
-                          if (selectedTransactions.size === transactions.length) setSelectedTransactions(new Set());
-                          else setSelectedTransactions(new Set(transactions.map(t => t.id)));
-                        }}
-                      />
-                    </th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[20%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('description')}>Descrição<SortIcon field="description" current={sortField} dir={sortDir} /></th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[13%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('date')}>Data<SortIcon field="date" current={sortField} dir={sortDir} /></th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[13%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('amount')}>Valor<SortIcon field="amount" current={sortField} dir={sortDir} /></th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[11%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('type')}>Tipo<SortIcon field="type" current={sortField} dir={sortDir} /></th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[15%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('categoryId')}>Categoria<SortIcon field="categoryId" current={sortField} dir={sortDir} /></th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[13%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleSort('originId')}>Origem<SortIcon field="originId" current={sortField} dir={sortDir} /></th>
-                    <th className="px-4 py-2.5 w-[7%]"></th>
+                    <th className="px-4 py-2.5 w-[7%] text-center">
+                      <input
+                        type="checkbox"
+                        className={checkboxClassName}
+                        checked={transactions.length > 0 && selectedTransactions.size === transactions.length}
+                        onChange={() => {
+                          if (selectedTransactions.size === transactions.length) setSelectedTransactions(new Set());
+                          else setSelectedTransactions(new Set(transactions.map((t) => t.id)));
+                        }}
+                        aria-label="Selecionar todas as transações"
+                      />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {newTransaction && (
                     <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
-                      <td className="px-2 py-1.5"></td>
                       <td className="px-3 py-1.5">
                         <input
                           className="edit-field"
@@ -422,18 +422,6 @@ export default function DataPage() {
                   )}
                   {sortedTransactions.map((t) => (
                     <tr key={t.id} style={{ height: 40 }} className={`border-b border-[var(--border)] transition-colors duration-200 ${selectedTransactions.has(t.id) ? 'bg-[var(--surface-alt)]' : editingTransaction === t.id ? 'bg-[var(--surface-alt)]' : 'hover:bg-[var(--surface-alt)]'}`}>
-                      <td className="px-2 py-1.5 text-center">
-                        <input
-                          type="checkbox"
-                          className="accent-[#3ecf8e]"
-                          checked={selectedTransactions.has(t.id)}
-                          onChange={() => {
-                            const next = new Set(selectedTransactions);
-                            if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
-                            setSelectedTransactions(next);
-                          }}
-                        />
-                      </td>
                       {/* Descrição */}
                       <td className="px-3 py-1.5">
                         {editingTransaction === t.id && editingField === 'description' ? (
@@ -654,28 +642,18 @@ export default function DataPage() {
                           </div>
                         )}
                       </td>
-                      <td className="pr-4 py-2 text-right">
-                        <button
-                          className="text-red-500 hover:text-red-700"
-                          title="Remover"
-                          onClick={() => {
-                            setConfirmModal({
-                              message: "Tem certeza que deseja remover esta transação?",
-                              onConfirm: async () => {
-                                setConfirmModal(null);
-                                setSaving(true);
-                                await fetch(`/api/transactions/${t.id}`, { method: "DELETE" });
-                                setTransactions((prev) => prev.filter((tr) => tr.id !== t.id));
-                                setSaving(false);
-                                setToast('Transação removida!');
-                                if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                                toastTimeout.current = setTimeout(() => setToast(null), 1800);
-                              },
-                            });
+                      <td className="px-4 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          className={checkboxClassName}
+                          checked={selectedTransactions.has(t.id)}
+                          onChange={() => {
+                            const next = new Set(selectedTransactions);
+                            if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
+                            setSelectedTransactions(next);
                           }}
-                        >
-                          <FiTrash2 />
-                        </button>
+                          aria-label={`Selecionar transacao ${t.description}`}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -690,15 +668,16 @@ export default function DataPage() {
               <table className="min-w-full text-sm" style={{ tableLayout: "fixed" }}>
                 <thead>
                   <tr className="border-y border-[var(--border)]">
-                    <th className="px-2 py-2.5 w-[4%] text-center">
+                    <th className="hidden px-2 py-2.5 w-[4%] text-center">
                       <input
                         type="checkbox"
-                        className="accent-[#3ecf8e]"
+                        className={checkboxClassName}
                         checked={categories.length > 0 && selectedCategories.size === categories.length}
                         onChange={() => {
                           if (selectedCategories.size === categories.length) setSelectedCategories(new Set());
-                          else setSelectedCategories(new Set(categories.map(c => c.id)));
+                          else setSelectedCategories(new Set(categories.map((c) => c.id)));
                         }}
+                        aria-label="Selecionar todas as categorias"
                       />
                     </th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[20%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('name')}>Nome<SortIcon field="name" current={catSortField} dir={catSortDir} /></th>
@@ -706,13 +685,23 @@ export default function DataPage() {
                     <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[18%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('subgroup')}>Subgrupo<SortIcon field="subgroup" current={catSortField} dir={catSortDir} /></th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[13%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('type')}>Tipo<SortIcon field="type" current={catSortField} dir={catSortDir} /></th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] w-[15%] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors" onClick={() => toggleCatSort('expected')}>Esperado<SortIcon field="expected" current={catSortField} dir={catSortDir} /></th>
-                    <th className="px-4 py-2.5 w-[7%]"></th>
+                    <th className="px-4 py-2.5 w-[7%] text-center">
+                      <input
+                        type="checkbox"
+                        className={checkboxClassName}
+                        checked={categories.length > 0 && selectedCategories.size === categories.length}
+                        onChange={() => {
+                          if (selectedCategories.size === categories.length) setSelectedCategories(new Set());
+                          else setSelectedCategories(new Set(categories.map((c) => c.id)));
+                        }}
+                        aria-label="Selecionar todas as categorias"
+                      />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {newCategory && (
                     <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
-                      <td className="px-2 py-1.5"></td>
                       <td className="px-3 py-1.5">
                         <input
                           className="edit-field"
@@ -812,18 +801,6 @@ export default function DataPage() {
                   )}
                   {sortedCategories.map((c) => (
                     <tr key={c.id} style={{ height: 40 }} className={`border-b border-[var(--border)] transition-colors duration-200 ${selectedCategories.has(c.id) ? 'bg-[var(--surface-alt)]' : editingCategory === c.id ? 'bg-[var(--surface-alt)]' : 'hover:bg-[var(--surface-alt)]'}`}>
-                      <td className="px-2 py-1.5 text-center">
-                        <input
-                          type="checkbox"
-                          className="accent-[#3ecf8e]"
-                          checked={selectedCategories.has(c.id)}
-                          onChange={() => {
-                            const next = new Set(selectedCategories);
-                            if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
-                            setSelectedCategories(next);
-                          }}
-                        />
-                      </td>
                       <td className="px-3 py-1.5">
                         {editingCategory === c.id && editingField === 'name' ? (
                           <input
@@ -988,28 +965,18 @@ export default function DataPage() {
                           </span>
                         )}
                       </td>
-                      <td className="pr-4 py-2 text-right">
-                        <button
-                          className="text-red-500 hover:text-red-700"
-                          title="Remover"
-                          onClick={() => {
-                            setConfirmModal({
-                              message: "Tem certeza que deseja remover esta categoria?",
-                              onConfirm: async () => {
-                                setConfirmModal(null);
-                                setSaving(true);
-                                await fetch(`/api/categories/${c.id}`, { method: "DELETE" });
-                                setCategories((prev) => prev.filter((cat) => cat.id !== c.id));
-                                setSaving(false);
-                                setToast('Categoria removida!');
-                                if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                                toastTimeout.current = setTimeout(() => setToast(null), 1800);
-                              },
-                            });
+                      <td className="px-4 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          className={checkboxClassName}
+                          checked={selectedCategories.has(c.id)}
+                          onChange={() => {
+                            const next = new Set(selectedCategories);
+                            if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+                            setSelectedCategories(next);
                           }}
-                        >
-                          <FiTrash2 />
-                        </button>
+                          aria-label={`Selecionar categoria ${c.name}`}
+                        />
                       </td>
                     </tr>
                   ))}
