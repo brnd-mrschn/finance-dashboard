@@ -6,14 +6,21 @@ import dynamic from "next/dynamic";
 // ApexCharts precisa ser importado dinamicamente para evitar SSR issues
 const ApexAreaChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
+type Transaction = {
+  id: string;
+  amount: number;
+  date: string;
+  type: "INCOME" | "EXPENSE";
+};
+
 export default function Finance() {
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
     fetch("/api/transactions")
       .then((res) => res.json())
-      .then(setTransactions)
+      .then((data: Transaction[]) => setTransactions(data))
       .catch((err) => {
         console.error(err);
         setError("Erro ao carregar dados");

@@ -10,22 +10,23 @@ export async function GET() {
   const categories = await prisma.category.findMany({
     orderBy: { name: "asc" },
   });
+  const hydratedCategories = categories.map((category) => ({ ...category }));
 
   // Backfill: atribui cores a categorias que ainda não têm
-  const usedColors = categories.map((c) => c.color).filter(Boolean) as string[];
-  const needsColor = categories.filter((c) => !c.color);
+  const usedColors = hydratedCategories.map((category) => category.color).filter(Boolean) as string[];
+  const needsColor = hydratedCategories.filter((category) => !category.color);
   for (const cat of needsColor) {
     try {
       const color = pickCategoryColor(usedColors);
       usedColors.push(color);
       await prisma.category.update({ where: { id: cat.id }, data: { color } });
-      (cat as any).color = color;
+      cat.color = color;
     } catch {
       // Ignora erro de backfill para não bloquear o GET
     }
   }
 
-  return NextResponse.json(categories);
+  return NextResponse.json(hydratedCategories);
 }
 
 export async function POST(req: Request) {

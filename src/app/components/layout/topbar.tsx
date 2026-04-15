@@ -7,7 +7,7 @@ import { ThemeToggle } from "@/app/components/ui/theme-toggle";
 const navItems = [
   { href: "/", label: "Dashboard" },
   { href: "/finance", label: "Financeiro" },
-  { href: "/data", label: "Data" },
+  { href: "/data", label: "Dados" },
   // { href: "/settings", label: "Configurações" }, // Removido
 ];
 

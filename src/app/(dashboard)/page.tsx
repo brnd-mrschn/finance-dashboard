@@ -489,7 +489,7 @@ export default function Dashboard() {
               <p className="text-sm text-[var(--muted-foreground)]">Busca independente dos filtros</p>
               <h2 className="text-2xl font-bold text-[var(--foreground)]">Resultados da busca</h2>
               <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                {searchResults.length} resultado(s) para "{searchTerm.trim()}"
+                {searchResults.length} resultado(s) para &quot;{searchTerm.trim()}&quot;
               </p>
             </div>
 

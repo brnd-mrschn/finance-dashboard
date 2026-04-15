@@ -5,25 +5,98 @@ import { FiTrash2, FiPlus, FiChevronUp, FiChevronDown, FiUpload } from "react-ic
 import { parseFile, type ParsedTransaction } from "@/lib/import-parser";
 import { motion, AnimatePresence } from "framer-motion";
 
+type TransactionType = "INCOME" | "EXPENSE";
+
+type Transaction = {
+  id: string;
+  description: string;
+  date: string;
+  amount: number;
+  type: TransactionType;
+  categoryId: string | null;
+  originId: string | null;
+};
+
+type Category = {
+  id: string;
+  name: string;
+  group: string;
+  subgroup: string;
+  type: TransactionType;
+  expected: number | null;
+  color?: string | null;
+};
+
+type Origin = {
+  id: string;
+  name: string;
+};
+
+type TransactionForm = {
+  description: string;
+  date: string;
+  amount: string;
+  type: TransactionType;
+  categoryId: string;
+  originId: string;
+};
+
+type CategoryForm = {
+  name: string;
+  group: string;
+  subgroup: string;
+  type: TransactionType;
+  expected: string;
+};
+
+type ViewMode = "transactions" | "categories";
+type SortDirection = "asc" | "desc";
+type TransactionSortField = "description" | "date" | "amount" | "type" | "categoryId" | "originId";
+type CategorySortField = "name" | "group" | "subgroup" | "type" | "expected";
+
+function SortIcon({
+  field,
+  current,
+  dir,
+}: {
+  field: string;
+  current: string;
+  dir: SortDirection;
+}) {
+  return (
+    <span className="inline-flex ml-1 opacity-60">
+      {current === field ? (
+        dir === "asc" ? (
+          <FiChevronUp size={12} />
+        ) : (
+          <FiChevronDown size={12} />
+        )
+      ) : (
+        <FiChevronDown size={10} className="opacity-30" />
+      )}
+    </span>
+  );
+}
+
 export default function DataPage() {
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [origins, setOrigins] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [origins, setOrigins] = useState<Origin[]>([]);
   const [error, setError] = useState("");
   const [editingTransaction, setEditingTransaction] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null); // novo: campo em edição
-  const [saving, setSaving] = useState(false);
+  const [, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimeout = useRef<NodeJS.Timeout | null>(null);
-  const [newTransaction, setNewTransaction] = useState<any | null>(null);
-  const [newCategory, setNewCategory] = useState<any | null>(null);
-  const [view, setView] = useState<'transactions' | 'categories'>('transactions');
+  const [newTransaction, setNewTransaction] = useState<TransactionForm | null>(null);
+  const [newCategory, setNewCategory] = useState<CategoryForm | null>(null);
+  const [view, setView] = useState<ViewMode>("transactions");
   const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
-  const [sortField, setSortField] = useState<string>('date');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [catSortField, setCatSortField] = useState<string>('name');
-  const [catSortDir, setCatSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<TransactionSortField>("date");
+  const [sortDir, setSortDir] = useState<SortDirection>("desc");
+  const [catSortField, setCatSortField] = useState<CategorySortField>("name");
+  const [catSortDir, setCatSortDir] = useState<SortDirection>("asc");
   const [importModal, setImportModal] = useState(false);
   const [importData, setImportData] = useState<ParsedTransaction[]>([]);
   const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
@@ -34,13 +107,19 @@ export default function DataPage() {
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const toggleSort = (field: string) => {
-    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortField(field); setSortDir('asc'); }
+  const updateNewTransaction = <K extends keyof TransactionForm>(field: K, value: TransactionForm[K]) => {
+    setNewTransaction((current) => (current ? { ...current, [field]: value } : current));
   };
-  const toggleCatSort = (field: string) => {
-    if (catSortField === field) setCatSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setCatSortField(field); setCatSortDir('asc'); }
+  const updateNewCategory = <K extends keyof CategoryForm>(field: K, value: CategoryForm[K]) => {
+    setNewCategory((current) => (current ? { ...current, [field]: value } : current));
+  };
+  const toggleSort = (field: TransactionSortField) => {
+    if (sortField === field) setSortDir((direction) => (direction === "asc" ? "desc" : "asc"));
+    else { setSortField(field); setSortDir("asc"); }
+  };
+  const toggleCatSort = (field: CategorySortField) => {
+    if (catSortField === field) setCatSortDir((direction) => (direction === "asc" ? "desc" : "asc"));
+    else { setCatSortField(field); setCatSortDir("asc"); }
   };
 
   const sortedTransactions = [...transactions].sort((a, b) => {
@@ -51,14 +130,14 @@ export default function DataPage() {
       case 'amount': return dir * (a.amount - b.amount);
       case 'type': return dir * a.type.localeCompare(b.type);
       case 'categoryId': {
-        const ca = categories.find(c => c.id === a.categoryId)?.name || '';
-        const cb = categories.find(c => c.id === b.categoryId)?.name || '';
-        return dir * ca.localeCompare(cb);
+        const categoryA = categories.find((category) => category.id === a.categoryId)?.name || "";
+        const categoryB = categories.find((category) => category.id === b.categoryId)?.name || "";
+        return dir * categoryA.localeCompare(categoryB);
       }
       case 'originId': {
-        const oa = origins.find(o => o.id === a.originId)?.name || '';
-        const ob = origins.find(o => o.id === b.originId)?.name || '';
-        return dir * oa.localeCompare(ob);
+        const originA = origins.find((origin) => origin.id === a.originId)?.name || "";
+        const originB = origins.find((origin) => origin.id === b.originId)?.name || "";
+        return dir * originA.localeCompare(originB);
       }
       default: return 0;
     }
@@ -76,24 +155,18 @@ export default function DataPage() {
     }
   });
 
-  const SortIcon = ({ field, current, dir }: { field: string; current: string; dir: 'asc' | 'desc' }) => (
-    <span className="inline-flex ml-1 opacity-60">
-      {current === field ? (dir === 'asc' ? <FiChevronUp size={12} /> : <FiChevronDown size={12} />) : <FiChevronDown size={10} className="opacity-30" />}
-    </span>
-  );
-
   useEffect(() => {
     fetch("/api/transactions")
       .then((res) => res.json())
-      .then(setTransactions)
+      .then((data: Transaction[]) => setTransactions(data))
       .catch(() => setError("Erro ao carregar transações"));
     fetch("/api/categories")
       .then((res) => res.json())
-      .then(setCategories)
+      .then((data: Category[]) => setCategories(data))
       .catch(() => setError("Erro ao carregar categorias"));
     fetch("/api/origins")
       .then((res) => res.json())
-      .then(setOrigins)
+      .then((data: Origin[]) => setOrigins(data))
       .catch(() => setError("Erro ao carregar origens"));
   }, []);
 
@@ -154,7 +227,7 @@ export default function DataPage() {
             </button>
             <button
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)]"
-              onClick={() => setNewTransaction({ description: "", date: new Date().toISOString().slice(0,10), amount: 0, type: "EXPENSE", categoryId: "", originId: "" })}
+              onClick={() => setNewTransaction({ description: "", date: new Date().toISOString().slice(0, 10), amount: "", type: "EXPENSE", categoryId: "", originId: "" })}
             >
               <FiPlus className="text-sm" /> Nova Transação
             </button>
@@ -235,7 +308,7 @@ export default function DataPage() {
                         <input
                           className="edit-field"
                           value={newTransaction.description}
-                          onChange={e => setNewTransaction((nt: any) => ({ ...nt, description: e.target.value }))}
+                          onChange={(e) => updateNewTransaction("description", e.target.value)}
                           placeholder="Descrição"
                           autoFocus
                         />
@@ -245,7 +318,7 @@ export default function DataPage() {
                           type="date"
                           className="edit-field"
                           value={newTransaction.date}
-                          onChange={e => setNewTransaction((nt: any) => ({ ...nt, date: e.target.value }))}
+                          onChange={(e) => updateNewTransaction("date", e.target.value)}
                         />
                       </td>
                       <td className="px-3 py-1.5">
@@ -253,7 +326,7 @@ export default function DataPage() {
                           type="number"
                           className="edit-field"
                           value={newTransaction.amount}
-                          onChange={e => setNewTransaction((nt: any) => ({ ...nt, amount: e.target.value }))}
+                          onChange={(e) => updateNewTransaction("amount", e.target.value)}
                           placeholder="Valor"
                         />
                       </td>
@@ -261,7 +334,7 @@ export default function DataPage() {
                         <select
                           className="edit-field"
                           value={newTransaction.type}
-                          onChange={e => setNewTransaction((nt: any) => ({ ...nt, type: e.target.value }))}
+                          onChange={(e) => updateNewTransaction("type", e.target.value as TransactionType)}
                         >
                           <option value="INCOME">Receita</option>
                           <option value="EXPENSE">Despesa</option>
@@ -271,7 +344,7 @@ export default function DataPage() {
                         <select
                           className="edit-field"
                           value={newTransaction.categoryId}
-                          onChange={e => setNewTransaction((nt: any) => ({ ...nt, categoryId: e.target.value }))}
+                          onChange={(e) => updateNewTransaction("categoryId", e.target.value)}
                         >
                           <option value="">Sem categoria</option>
                           {categories.map((c) => (
@@ -283,7 +356,7 @@ export default function DataPage() {
                         <select
                           className="edit-field"
                           value={newTransaction.originId}
-                          onChange={e => setNewTransaction((nt: any) => ({ ...nt, originId: e.target.value }))}
+                          onChange={(e) => updateNewTransaction("originId", e.target.value)}
                         >
                           <option value="">Sem origem</option>
                           {origins.map((o) => (
@@ -644,7 +717,7 @@ export default function DataPage() {
                         <input
                           className="edit-field"
                           value={newCategory.name}
-                          onChange={e => setNewCategory((nc: any) => ({ ...nc, name: e.target.value }))}
+                          onChange={(e) => updateNewCategory("name", e.target.value)}
                           placeholder="Nome"
                           autoFocus
                         />
@@ -653,7 +726,7 @@ export default function DataPage() {
                         <input
                           className="edit-field"
                           value={newCategory.group}
-                          onChange={e => setNewCategory((nc: any) => ({ ...nc, group: e.target.value }))}
+                          onChange={(e) => updateNewCategory("group", e.target.value)}
                           placeholder="Grupo"
                         />
                       </td>
@@ -661,7 +734,7 @@ export default function DataPage() {
                         <input
                           className="edit-field"
                           value={newCategory.subgroup}
-                          onChange={e => setNewCategory((nc: any) => ({ ...nc, subgroup: e.target.value }))}
+                          onChange={(e) => updateNewCategory("subgroup", e.target.value)}
                           placeholder="Subgrupo"
                         />
                       </td>
@@ -669,7 +742,7 @@ export default function DataPage() {
                         <select
                           className="edit-field"
                           value={newCategory.type}
-                          onChange={e => setNewCategory((nc: any) => ({ ...nc, type: e.target.value }))}
+                          onChange={(e) => updateNewCategory("type", e.target.value as TransactionType)}
                         >
                           <option value="EXPENSE">Despesa</option>
                           <option value="INCOME">Receita</option>
@@ -680,7 +753,7 @@ export default function DataPage() {
                           type="number"
                           className="edit-field"
                           value={newCategory.expected}
-                          onChange={e => setNewCategory((nc: any) => ({ ...nc, expected: e.target.value }))}
+                          onChange={(e) => updateNewCategory("expected", e.target.value)}
                           placeholder="Valor esperado"
                         />
                       </td>

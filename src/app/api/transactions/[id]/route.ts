@@ -12,7 +12,12 @@ export async function PUT(
   const body = await req.json();
 
   // Remove campos que não devem ser atualizados diretamente
-  const { id: _id, createdAt, user, category, origin, ...data } = body;
+  const data = { ...body };
+  delete data.id;
+  delete data.createdAt;
+  delete data.user;
+  delete data.category;
+  delete data.origin;
 
   // Converte date string para Date se necessário
   if (data.date && typeof data.date === "string") {

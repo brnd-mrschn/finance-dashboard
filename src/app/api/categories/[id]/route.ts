@@ -12,7 +12,10 @@ export async function PUT(
   const body = await req.json();
 
   // Remove campos que não devem ser atualizados diretamente
-  const { id: _id, createdAt, transactions, ...data } = body;
+  const data = { ...body };
+  delete data.id;
+  delete data.createdAt;
+  delete data.transactions;
 
   const category = await prisma.category.update({
     where: { id },
