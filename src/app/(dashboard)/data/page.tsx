@@ -536,7 +536,7 @@ export default function DataPage() {
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...t, type: value }),
                               });
-                              setTransactions((prev) => prev.map((tr) => tr.id === t.id ? { ...tr, type: value } : tr));
+                              setTransactions((prev) => prev.map((tr) => tr.id === t.id ? { ...tr, type: t.type as TransactionType || tr.type } : tr));
                               setEditingTransaction(null);
                               setEditingField(null);
                               setSaving(false);
