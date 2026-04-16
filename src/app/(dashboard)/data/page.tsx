@@ -912,7 +912,7 @@ export default function DataPage() {
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...c, type: value })
                               });
-                              setCategories((prev) => prev.map((cat) => cat.id === c.id ? { ...cat, type: value } : cat));
+                              setCategories((prev) => prev.map((cat) => cat.id === c.id ? {...cat, type: value === "INCOME" ? "INCOME" : "EXPENSE"} : cat))
                               setEditingCategory(null);
                               setEditingField(null);
                               setSaving(false);
