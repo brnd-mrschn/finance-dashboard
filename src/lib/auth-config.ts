@@ -11,7 +11,6 @@
 // E-mails padrão autorizados (fallback caso não haja env var)
 const ALLOWED_EMAILS_DEFAULT = [
   "monef4xgames@gmail.com",
-  "vinicius@dznprojectmedia.com",
 ];
 
 /**
