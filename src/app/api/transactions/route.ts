@@ -2,11 +2,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
+import { validateBody, createTransactionSchema } from "@/lib/validations";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = await requireAuth(req);
+  if (!auth.authorized) return auth.response;
+
   const { prisma } = await import("@/lib/db");
 
   const transactions = await prisma.transaction.findMany({
+    where: { userId: auth.userId },
     orderBy: { date: "desc" },
   });
 
@@ -14,19 +20,24 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { prisma } = await import("@/lib/db");
+  const auth = await requireAuth(req);
+  if (!auth.authorized) return auth.response;
 
   const body = await req.json();
+  const validation = validateBody(createTransactionSchema, body);
+  if (!validation.success) return validation.response;
+
+  const { prisma } = await import("@/lib/db");
 
   const transaction = await prisma.transaction.create({
     data: {
-      description: body.description,
-      date: new Date(body.date),
-      amount: parseFloat(body.amount),
-      type: body.type,
-      originId: body.originId || null,
-      categoryId: body.categoryId || null,
-      userId: body.userId ?? "dev-user",
+      description: validation.data.description,
+      date: new Date(validation.data.date),
+      amount: validation.data.amount,
+      type: validation.data.type,
+      originId: validation.data.originId || null,
+      categoryId: validation.data.categoryId || null,
+      userId: auth.userId,
     },
   });
 

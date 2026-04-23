@@ -2,8 +2,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
+import { validateBody, createOriginSchema } from "@/lib/validations";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = await requireAuth(req);
+  if (!auth.authorized) return auth.response;
+
   try {
     const { prisma } = await import("@/lib/db");
 
@@ -19,13 +24,18 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { prisma } = await import("@/lib/db");
+  const auth = await requireAuth(req);
+  if (!auth.authorized) return auth.response;
 
   const body = await req.json();
+  const validation = validateBody(createOriginSchema, body);
+  if (!validation.success) return validation.response;
+
+  const { prisma } = await import("@/lib/db");
 
   const origin = await prisma.origin.create({
     data: {
-      name: body.name,
+      name: validation.data.name,
     },
   });
 
