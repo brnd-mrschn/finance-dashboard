@@ -3,12 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "./supabase";
-
-// Adicione aqui os e-mails autorizados
-const ALLOWED_EMAILS = [
-  "monef4xgames@gmail.com",
-  "vinicius@dznprojectmedia.com",
-];
+import { isEmailAllowed } from "./auth-config";
 
 type AuthState = "loading" | "authenticated" | "unauthenticated";
 
@@ -33,7 +28,7 @@ export function useAuthGuard() {
 
       const { data: { user } } = await supabase.auth.getUser();
 
-      if (!user || !user.email || !ALLOWED_EMAILS.includes(user.email)) {
+      if (!user || !user.email || !isEmailAllowed(user.email)) {
         setAuthState("unauthenticated");
         router.replace("/login");
         return;
@@ -54,7 +49,7 @@ export function useAuthGuard() {
             router.replace("/login");
           } else if (
             session.user.email &&
-            ALLOWED_EMAILS.includes(session.user.email)
+            isEmailAllowed(session.user.email)
           ) {
             setAuthState("authenticated");
           }

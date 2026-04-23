@@ -1,11 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-
-// E-mails autorizados a acessar o dashboard
-const ALLOWED_EMAILS = [
-  "monef4xgames@gmail.com",
-  "vinicius@dznprojectmedia.com",
-];
+import { isEmailAllowed } from "@/lib/auth-config";
 
 // Cliente Supabase server-side (singleton)
 let serverSupabase: ReturnType<typeof createClient> | null = null;
@@ -41,7 +36,7 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
     return {
       authorized: false,
       response: NextResponse.json(
-        { error: "Serviço de autenticação não configurado" },
+        { error: "Serviço de autenticação não configurado. Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY no .env" },
         { status: 500 }
       ),
     };
@@ -83,7 +78,7 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
   }
 
   const email = data.user.email;
-  if (!email || !ALLOWED_EMAILS.includes(email)) {
+  if (!email || !isEmailAllowed(email)) {
     return {
       authorized: false,
       response: NextResponse.json(

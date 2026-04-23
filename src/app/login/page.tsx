@@ -1,22 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { getSupabaseClient } from "@/lib/supabase";
 
+// Verifica modo dev de forma síncrona (NEXT_PUBLIC_ vars estão disponíveis no cliente)
+const authDisabled = process.env.NEXT_PUBLIC_AUTH_DISABLED === "true";
+
 export default function LoginPage() {
   const router = useRouter();
   const supabase = getSupabaseClient();
-  const [authDisabled, setAuthDisabled] = useState(false);
-
-  useEffect(() => {
-    // Modo desenvolvimento: auth desativada
-    if (process.env.NEXT_PUBLIC_AUTH_DISABLED === "true") {
-      setAuthDisabled(true);
-    }
-  }, []);
 
   useEffect(() => {
     if (!supabase) return;
@@ -90,9 +85,24 @@ export default function LoginPage() {
             onlyThirdPartyProviders={true}
           />
         ) : (
-          <p className="text-sm text-[#ed4245]">
-            Serviço de autenticação não configurado. Verifique as variáveis de ambiente.
-          </p>
+          <div>
+            <p className="text-sm text-[#ed4245] mb-4">
+              Serviço de autenticação não configurado.
+            </p>
+            <p className="text-xs text-[var(--muted-foreground)] mb-4">
+              Configure as variáveis de ambiente no arquivo <code className="bg-[var(--surface-alt)] px-1.5 py-0.5 rounded text-[var(--foreground)]">.env</code>:
+            </p>
+            <div className="text-left bg-[var(--surface-alt)] rounded-md p-3 text-xs font-mono text-[var(--foreground)] mb-4 space-y-1">
+              <p>NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co</p>
+              <p>NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key</p>
+            </div>
+            <p className="text-xs text-[var(--muted-foreground)]">
+              Ou ative o modo desenvolvimento adicionando:
+            </p>
+            <div className="text-left bg-[var(--surface-alt)] rounded-md p-3 text-xs font-mono text-[var(--foreground)] mt-2">
+              <p>NEXT_PUBLIC_AUTH_DISABLED=true</p>
+            </div>
+          </div>
         )}
       </div>
     </div>

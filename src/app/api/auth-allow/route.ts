@@ -3,11 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-
-const ALLOWED_EMAILS = [
-  "monef4xgames@gmail.com",
-  "vinicius@dznprojectmedia.com",
-];
+import { isEmailAllowed } from "@/lib/auth-config";
 
 export async function GET(request: Request) {
   const auth = await requireAuth(request);
@@ -15,7 +11,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const email = searchParams.get("email");
-  if (!email || !ALLOWED_EMAILS.includes(email)) {
+  if (!email || !isEmailAllowed(email)) {
     return NextResponse.json({ allowed: false });
   }
   return NextResponse.json({ allowed: true });
