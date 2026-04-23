@@ -8,7 +8,10 @@ let serverSupabase: ReturnType<typeof createClient> | null = null;
 function getServerSupabase() {
   if (serverSupabase) return serverSupabase;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Suporta ambos os nomes: ANON_KEY (legado) e PUBLISHABLE_KEY (novo nome do Supabase)
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return null;
   serverSupabase = createClient(url, key);
   return serverSupabase;

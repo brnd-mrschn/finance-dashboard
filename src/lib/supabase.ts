@@ -4,14 +4,17 @@ let browserClient: SupabaseClient | null = null;
 
 export function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Suporta ambos os nomes: ANON_KEY (legado) e PUBLISHABLE_KEY (novo nome do Supabase)
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!supabaseUrl || !supabaseKey) {
     return null;
   }
 
   if (!browserClient) {
-    browserClient = createClient(supabaseUrl, supabaseAnonKey);
+    browserClient = createClient(supabaseUrl, supabaseKey);
   }
 
   return browserClient;
