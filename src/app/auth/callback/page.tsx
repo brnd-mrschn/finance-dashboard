@@ -1,71 +1,64 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import { isEmailAllowed } from "@/lib/auth-config";
 
 /**
  * Página de callback OAuth do Supabase.
- * Troca o código PKCE por uma sessão (client-side, pois o code_verifier
- * está no localStorage) e redireciona conforme o resultado.
+ *
+ * O Supabase JS client tem detectSessionInUrl=true por padrão,
+ * então ele automaticamente detecta o ?code= na URL e troca por sessão.
+ * Esta página apenas espera o evento SIGNED_IN e redireciona.
  */
 export default function AuthCallbackPage() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
     if (!supabase) {
-      setError("Serviço de autenticação não configurado.");
+      window.location.href = "/login";
       return;
     }
 
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    const oauthError = params.get("error");
-    const errorDescription = params.get("error_description");
-
-    // Erro retornado pelo provedor OAuth
-    if (oauthError) {
-      setError(errorDescription || `Erro na autenticação: ${oauthError}`);
-      setTimeout(() => router.replace("/login"), 3000);
-      return;
-    }
-
-    // Sem código — não há o que fazer
-    if (!code) {
-      router.replace("/login");
-      return;
-    }
-
-    // Troca o código PKCE por uma sessão
-    supabase.auth.exchangeCodeForSession(code).then(({ data, error: exchangeError }) => {
-      if (exchangeError) {
-        console.error("[auth/callback] Code exchange error:", exchangeError.message);
-        setError("Falha na troca de código. Tente novamente.");
-        setTimeout(() => router.replace("/login"), 3000);
-        return;
+    // Verifica se já tem sessão (detectSessionInUrl pode ter resolvido rápido)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email && isEmailAllowed(session.user.email)) {
+        window.location.href = "/";
       }
-
-      const user = data.session?.user;
-      if (!user?.email || !isEmailAllowed(user.email)) {
-        // Email não autorizado — faz sign out e redireciona
-        supabase.auth.signOut().then(() => {
-          setError("Email não autorizado. Contate o administrador.");
-          setTimeout(() => router.replace("/login"), 3000);
-        });
-        return;
-      }
-
-      // Sucesso — redireciona para o dashboard
-      router.replace("/");
-    }).catch((err) => {
-      console.error("[auth/callback] Unexpected error:", err);
-      setError("Erro inesperado. Tente novamente.");
-      setTimeout(() => router.replace("/login"), 3000);
     });
-  }, [router]);
+
+    // Escuta o evento de SIGNED_IN (detectSessionInUrl dispara isso)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "SIGNED_IN" && session?.user?.email) {
+          if (isEmailAllowed(session.user.email)) {
+            // Full reload para evitar race conditions com useAuthGuard
+            window.location.href = "/";
+          } else {
+            // Email não autorizado
+            supabase.auth.signOut().then(() => {
+              setError("Email não autorizado. Contate o administrador.");
+              setTimeout(() => { window.location.href = "/login"; }, 3000);
+            });
+          }
+        } else if (event === "SIGNED_OUT") {
+          window.location.href = "/login";
+        }
+      }
+    );
+
+    // Timeout de segurança — se nada acontecer em 10s, volta para login
+    const timeout = setTimeout(() => {
+      setError("Tempo esgotado. Tente novamente.");
+      setTimeout(() => { window.location.href = "/login"; }, 2000);
+    }, 10000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
+  }, []);
 
   return (
     <div

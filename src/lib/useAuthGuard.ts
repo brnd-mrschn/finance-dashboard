@@ -27,13 +27,15 @@ export function useAuthGuard() {
 
     let cancelled = false;
 
-    // Verifica se o usuário está autenticado
     const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Usa getSession() em vez de getUser() — lê do localStorage
+      // e não faz request de rede, evitando race conditions após
+      // exchangeCodeForSession
+      const { data: { session } } = await supabase.auth.getSession();
 
       if (cancelled) return;
 
-      if (!user || !user.email || !isEmailAllowed(user.email)) {
+      if (!session?.user?.email || !isEmailAllowed(session.user.email)) {
         setAuthState("unauthenticated");
         router.replace("/login");
         return;
@@ -45,6 +47,8 @@ export function useAuthGuard() {
     checkAuth();
 
     // Escuta mudanças de auth (login/logout)
+    // Isso também captura o evento de SIGNED_IN quando o Supabase
+    // detecta automaticamente o code PKCE na URL (detectSessionInUrl)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (cancelled) return;
