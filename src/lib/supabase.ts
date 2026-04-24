@@ -14,16 +14,7 @@ export function getSupabaseClient() {
   }
 
   if (!browserClient) {
-    browserClient = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        // Desativa detecção automática de ?code= na URL.
-        // A troca PKCE é feita explicitamente no /auth/callback.
-        // Isso evita conflitos e race conditions.
-        detectSessionInUrl: false,
-        // Persiste sessão no localStorage (padrão)
-        persistSession: true,
-      },
-    });
+    browserClient = createClient(supabaseUrl, supabaseKey);
   }
 
   return browserClient;

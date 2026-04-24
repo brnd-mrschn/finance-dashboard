@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
 
-// Verifica modo dev de forma síncrona
 const authDisabled = process.env.NEXT_PUBLIC_AUTH_DISABLED === "true";
 
 export default function LoginPage() {
@@ -11,12 +10,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Se já está logado, redireciona para o dashboard com reload completo
+  // Se já está logado, redireciona para o dashboard
   useEffect(() => {
     if (!supabase) return;
-
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user?.email) {
+      if (session?.user) {
         window.location.href = "/";
       }
     });
@@ -30,9 +28,9 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        // Redireciona para /auth/callback que faz o code exchange
-        // (detectSessionInUrl está desativado)
-        redirectTo: `${window.location.origin}/auth/callback`,
+        // Redireciona direto para / — o Supabase client detecta
+        // o ?code= automaticamente via detectSessionInUrl (padrão)
+        redirectTo: window.location.origin,
       },
     });
 
@@ -45,7 +43,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--background)] px-4">
       <div className="bg-[var(--surface)] p-8 rounded-lg shadow-lg border border-[var(--border)] w-full max-w-md text-center">
-        {/* Logo */}
         <div className="flex justify-center mb-6">
           <svg width="48" height="48" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#euro_linear_login)"/>
@@ -109,17 +106,11 @@ export default function LoginPage() {
               Serviço de autenticação não configurado.
             </p>
             <p className="text-xs text-[var(--muted-foreground)] mb-4">
-              Configure as variáveis de ambiente no arquivo <code className="bg-[var(--surface-alt)] px-1.5 py-0.5 rounded text-[var(--foreground)]">.env</code>:
+              Configure as variáveis de ambiente:
             </p>
             <div className="text-left bg-[var(--surface-alt)] rounded-md p-3 text-xs font-mono text-[var(--foreground)] mb-4 space-y-1">
               <p>NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co</p>
               <p>NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key</p>
-            </div>
-            <p className="text-xs text-[var(--muted-foreground)]">
-              Ou ative o modo desenvolvimento adicionando:
-            </p>
-            <div className="text-left bg-[var(--surface-alt)] rounded-md p-3 text-xs font-mono text-[var(--foreground)] mt-2">
-              <p>NEXT_PUBLIC_AUTH_DISABLED=true</p>
             </div>
           </div>
         )}
