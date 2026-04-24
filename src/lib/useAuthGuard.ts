@@ -27,51 +27,22 @@ export function useAuthGuard() {
 
     let cancelled = false;
 
-    const initAuth = async () => {
-      // Se existe um código PKCE na URL, troca por sessão primeiro
-      // Usa window.location.search para evitar necessidade de Suspense boundary
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
-      if (code) {
-        try {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) {
-            console.error("[useAuthGuard] Code exchange error:", error.message);
-            if (!cancelled) {
-              setAuthState("unauthenticated");
-              router.replace("/login");
-            }
-            return;
-          }
-          // Limpa o código da URL sem recarregar a página
-          window.history.replaceState({}, document.title, window.location.pathname);
-        } catch (err) {
-          console.error("[useAuthGuard] Code exchange exception:", err);
-          if (!cancelled) {
-            setAuthState("unauthenticated");
-            router.replace("/login");
-          }
-          return;
-        }
-      }
-
-      // Verifica se o usuário está autenticado
+    // Verifica se o usuário está autenticado
+    const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
 
+      if (cancelled) return;
+
       if (!user || !user.email || !isEmailAllowed(user.email)) {
-        if (!cancelled) {
-          setAuthState("unauthenticated");
-          router.replace("/login");
-        }
+        setAuthState("unauthenticated");
+        router.replace("/login");
         return;
       }
 
-      if (!cancelled) {
-        setAuthState("authenticated");
-      }
+      setAuthState("authenticated");
     };
 
-    initAuth();
+    checkAuth();
 
     // Escuta mudanças de auth (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
