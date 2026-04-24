@@ -28,8 +28,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Redireciona para login se não autenticado (full reload, não client-side)
+  useEffect(() => {
+    if (authState === "unauthenticated") {
+      window.location.href = "/login";
+    }
+  }, [authState]);
+
   // Enquanto verifica autenticação, mostra tela de carregamento
-  if (authState === "loading") {
+  if (authState === "loading" || authState === "unauthenticated") {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -50,11 +57,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
-  }
-
-  // Se não autenticado, não renderiza nada (redirecionamento já foi feito)
-  if (authState === "unauthenticated") {
-    return null;
   }
 
   return (

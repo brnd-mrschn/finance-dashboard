@@ -1,40 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 
-// Verifica modo dev de forma síncrona (NEXT_PUBLIC_ vars estão disponíveis no cliente)
+// Verifica modo dev de forma síncrona
 const authDisabled = process.env.NEXT_PUBLIC_AUTH_DISABLED === "true";
 
 export default function LoginPage() {
-  const router = useRouter();
   const supabase = getSupabaseClient();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Verifica erro vindo do callback OAuth
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const error = params.get("error");
-    if (error) {
-      const description = params.get("error_description");
-      setErrorMessage(description || `Erro na autenticação: ${error}`);
-      // Limpa os parâmetros da URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, []);
-
-  // Se já está logado, redireciona para o dashboard
+  // Se já está logado, redireciona para o dashboard com reload completo
   useEffect(() => {
     if (!supabase) return;
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        router.replace("/");
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email) {
+        window.location.href = "/";
       }
     });
-  }, [supabase, router]);
+  }, [supabase]);
 
   const handleGoogleLogin = async () => {
     if (!supabase) return;
@@ -44,6 +30,8 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
+        // Redireciona para /auth/callback que faz o code exchange
+        // (detectSessionInUrl está desativado)
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -52,7 +40,6 @@ export default function LoginPage() {
       setErrorMessage(error.message);
       setLoading(false);
     }
-    // Se não houver erro, o browser será redirecionado pelo Supabase
   };
 
   return (
