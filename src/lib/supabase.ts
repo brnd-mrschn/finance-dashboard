@@ -14,14 +14,9 @@ export function getSupabaseClient() {
   }
 
   if (!browserClient) {
-    browserClient = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        // Desativa auto-exchange — a página /auth/callback faz isso
-        // explicitamente via exchangeCodeForSession(). Isso evita
-        // race conditions com useAuthGuard no dashboard.
-        detectSessionInUrl: false,
-      },
-    });
+    // Usar configuração padrão — detectSessionInUrl=true permite
+    // que o Supabase troque o código PKCE automaticamente em qualquer página.
+    browserClient = createClient(supabaseUrl, supabaseKey);
   }
 
   return browserClient;

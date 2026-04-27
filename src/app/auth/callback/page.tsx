@@ -5,11 +5,12 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { isEmailAllowed } from "@/lib/auth-config";
 
 /**
- * Página de callback OAuth do Supabase.
+ * Página de callback OAuth do Supabase (fallback).
  *
- * Com detectSessionInUrl=false, esta página é responsável por
- * trocar o código PKCE por uma sessão explicitamente via
- * exchangeCodeForSession().
+ * Se o Supabase redirecionar para /auth/callback em vez de /,
+ * esta página faz o exchange explicitamente.
+ * Com detectSessionInUrl=true (padrão), o Supabase também tenta
+ * o auto-exchange aqui.
  */
 export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
@@ -33,24 +34,37 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    // Sem código — volta para login
+    // Sem código — verifica se já tem sessão (auto-exchange pode ter funcionado)
     if (!code) {
-      window.location.href = "/login";
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user?.email && isEmailAllowed(session.user.email)) {
+          window.location.href = "/";
+        } else {
+          window.location.href = "/login";
+        }
+      });
       return;
     }
 
     // Troca o código PKCE por uma sessão explicitamente
+    // (funciona com ou sem detectSessionInUrl)
     supabase.auth.exchangeCodeForSession(code).then(({ data, error: exchangeError }) => {
       if (exchangeError) {
         console.error("[auth/callback] Code exchange error:", exchangeError.message);
-        setError("Falha na autenticação. Tente novamente.");
-        setTimeout(() => { window.location.href = "/login"; }, 3000);
+        // Tenta getSession como fallback (auto-exchange pode ter funcionado)
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user?.email && isEmailAllowed(session.user.email)) {
+            window.location.href = "/";
+          } else {
+            setError("Falha na autenticação. Tente novamente.");
+            setTimeout(() => { window.location.href = "/login"; }, 3000);
+          }
+        });
         return;
       }
 
       const user = data.session?.user;
       if (!user?.email || !isEmailAllowed(user.email)) {
-        // Email não autorizado
         supabase.auth.signOut().then(() => {
           setError("Email não autorizado. Contate o administrador.");
           setTimeout(() => { window.location.href = "/login"; }, 3000);
@@ -58,9 +72,7 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      // Sucesso — reload completo para o dashboard
-      // Usa window.location.href (full reload) para garantir que
-      // o useAuthGuard no dashboard layout leia a sessão corretamente
+      // Sucesso — redirect para dashboard
       window.location.href = "/";
     }).catch((err) => {
       console.error("[auth/callback] Unexpected error:", err);
