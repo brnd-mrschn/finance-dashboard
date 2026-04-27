@@ -25,13 +25,16 @@ export default function LoginPage() {
     setLoading(true);
     setErrorMessage(null);
 
+    // Usa NEXT_PUBLIC_SITE_URL se configurado (produção), senão window.location.origin (dev)
+    const redirectTo = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        // Redireciona para a raiz — o Supabase client com
-        // detectSessionInUrl=true troca o código automaticamente.
-        // useAuthGuard detecta ?code= e aguarda a sessão.
-        redirectTo: window.location.origin,
+        // Redireciona para a raiz do site de produção.
+        // O Supabase client com detectSessionInUrl=true troca
+        // o código PKCE automaticamente.
+        redirectTo,
       },
     });
 
