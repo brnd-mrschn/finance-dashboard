@@ -9,9 +9,9 @@ type AuthState = "loading" | "authenticated" | "unauthenticated";
 /**
  * Hook de proteção de rota client-side.
  *
- * Com detectSessionInUrl=false, o Supabase client NÃO troca
- * códigos PKCE automaticamente. Isso é feito pela página /auth/callback.
- * Aqui apenas verificamos se já existe uma sessão válida.
+ * Verifica se existe uma sessão válida do Supabase.
+ * O fluxo OAuth é: login → Google → /auth/callback → redirect to /
+ * Aqui apenas checamos se o usuário já tem sessão ativa.
  */
 export function useAuthGuard() {
   const [authState, setAuthState] = useState<AuthState>("loading");
