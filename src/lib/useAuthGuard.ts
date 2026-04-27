@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "./supabase";
 import { isEmailAllowed } from "./auth-config";
 
@@ -9,32 +9,31 @@ type AuthState = "loading" | "authenticated" | "unauthenticated";
 /**
  * Hook de proteção de rota client-side.
  *
- * IMPORTANTE: Quando há ?code= na URL (retorno do OAuth PKCE),
- * NÃO redireciona para /login. O Supabase client com
- * detectSessionInUrl=true troca o código automaticamente e
- * dispara o evento SIGNED_IN via onAuthStateChange.
+ * Com detectSessionInUrl=false, o Supabase client NÃO troca
+ * códigos PKCE automaticamente. Isso é feito pela página /auth/callback.
+ * Aqui apenas verificamos se já existe uma sessão válida.
  */
 export function useAuthGuard() {
   const [authState, setAuthState] = useState<AuthState>("loading");
+  // Ref para o timeout ler o valor atual (evita stale closure)
+  const authStateRef = useRef<AuthState>("loading");
 
   useEffect(() => {
     // Modo desenvolvimento: auth desativada
     if (process.env.NEXT_PUBLIC_AUTH_DISABLED === "true") {
+      authStateRef.current = "authenticated";
       setAuthState("authenticated");
       return;
     }
 
     const supabase = getSupabaseClient();
     if (!supabase) {
+      authStateRef.current = "unauthenticated";
       setAuthState("unauthenticated");
       return;
     }
 
     let cancelled = false;
-
-    // Detecta se há código PKCE na URL (retorno do OAuth)
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasCode = urlParams.has("code");
 
     const checkAuth = async () => {
       try {
@@ -43,24 +42,16 @@ export function useAuthGuard() {
         if (cancelled) return;
 
         if (session?.user?.email && isEmailAllowed(session.user.email)) {
-          // Limpa ?code= da URL
-          if (hasCode) {
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
+          authStateRef.current = "authenticated";
           setAuthState("authenticated");
-        } else if (hasCode) {
-          // Há código PKCE mas sessão ainda não foi estabelecida.
-          // NÃO redireciona! O detectSessionInUrl vai trocar o código
-          // e o onAuthStateChange vai capturar o SIGNED_IN.
-          // Mantém como "loading" e aguarda.
-          console.log("[useAuthGuard] PKCE code in URL, waiting for session...");
         } else {
-          // Sem sessão e sem código — não autenticado
+          authStateRef.current = "unauthenticated";
           setAuthState("unauthenticated");
         }
       } catch (err) {
         console.error("[useAuthGuard] Error:", err);
         if (!cancelled) {
+          authStateRef.current = "unauthenticated";
           setAuthState("unauthenticated");
         }
       }
@@ -68,7 +59,7 @@ export function useAuthGuard() {
 
     checkAuth();
 
-    // Escuta mudanças de auth — captura SIGNED_IN após code exchange
+    // Escuta mudanças de auth (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (cancelled) return;
@@ -77,28 +68,26 @@ export function useAuthGuard() {
 
         if (event === "SIGNED_IN" && session?.user?.email) {
           if (isEmailAllowed(session.user.email)) {
-            // Limpa ?code= da URL
-            if (window.location.search.includes("code=")) {
-              window.history.replaceState({}, document.title, window.location.pathname);
-            }
+            authStateRef.current = "authenticated";
             setAuthState("authenticated");
           } else {
             supabase.auth.signOut();
+            authStateRef.current = "unauthenticated";
             setAuthState("unauthenticated");
           }
         } else if (event === "SIGNED_OUT") {
+          authStateRef.current = "unauthenticated";
           setAuthState("unauthenticated");
         }
-        // Para outros eventos (TOKEN_REFRESHED, etc), não muda o estado
-        // se já está autenticado
       }
     );
 
     // Timeout de segurança — se após 15s ainda está loading sem sessão,
-    // redireciona para login
+    // redireciona para login. Usa ref para ler o valor ATUAL do estado.
     const timeout = setTimeout(() => {
-      if (!cancelled && authState === "loading") {
+      if (!cancelled && authStateRef.current === "loading") {
         console.log("[useAuthGuard] Timeout — redirecting to login");
+        authStateRef.current = "unauthenticated";
         setAuthState("unauthenticated");
       }
     }, 15000);

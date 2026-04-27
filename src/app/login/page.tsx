@@ -28,9 +28,9 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        // Redireciona direto para / — o Supabase client detecta
-        // o ?code= automaticamente via detectSessionInUrl (padrão)
-        redirectTo: window.location.origin,
+        // Redireciona para /auth/callback após OAuth.
+        // Essa página faz o exchangeCodeForSession explicitamente.
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 
