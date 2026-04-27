@@ -14,7 +14,14 @@ export function getSupabaseClient() {
   }
 
   if (!browserClient) {
-    browserClient = createClient(supabaseUrl, supabaseKey);
+    browserClient = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        // Desativa auto-exchange — a página /auth/callback faz isso
+        // explicitamente via exchangeCodeForSession(). Isso evita
+        // race conditions com useAuthGuard no dashboard.
+        detectSessionInUrl: false,
+      },
+    });
   }
 
   return browserClient;

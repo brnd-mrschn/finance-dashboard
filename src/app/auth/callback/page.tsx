@@ -7,9 +7,9 @@ import { isEmailAllowed } from "@/lib/auth-config";
 /**
  * Página de callback OAuth do Supabase.
  *
- * Com detectSessionInUrl=true (padrão), o Supabase client troca
- * o código PKCE automaticamente ao detectar ?code= na URL.
- * Esta página apenas aguarda a sessão ser estabelecida e redireciona.
+ * Com detectSessionInUrl=false, esta página é responsável por
+ * trocar o código PKCE por uma sessão explicitamente via
+ * exchangeCodeForSession().
  */
 export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
@@ -21,9 +21,11 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    // Verifica erro retornado pelo provedor OAuth
     const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
     const oauthError = params.get("error");
+
+    // Erro retornado pelo provedor OAuth
     if (oauthError) {
       const desc = params.get("error_description") || `Erro: ${oauthError}`;
       setError(desc);
@@ -31,50 +33,40 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    let handled = false;
+    // Sem código — volta para login
+    if (!code) {
+      window.location.href = "/login";
+      return;
+    }
 
-    // 1) Tenta getSession — se o auto-exchange já completou, redireciona
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (handled) return;
-      if (session?.user?.email && isEmailAllowed(session.user.email)) {
-        handled = true;
-        window.location.href = "/";
+    // Troca o código PKCE por uma sessão explicitamente
+    supabase.auth.exchangeCodeForSession(code).then(({ data, error: exchangeError }) => {
+      if (exchangeError) {
+        console.error("[auth/callback] Code exchange error:", exchangeError.message);
+        setError("Falha na autenticação. Tente novamente.");
+        setTimeout(() => { window.location.href = "/login"; }, 3000);
+        return;
       }
-      // Se não tem sessão ainda, aguarda o onAuthStateChange
+
+      const user = data.session?.user;
+      if (!user?.email || !isEmailAllowed(user.email)) {
+        // Email não autorizado
+        supabase.auth.signOut().then(() => {
+          setError("Email não autorizado. Contate o administrador.");
+          setTimeout(() => { window.location.href = "/login"; }, 3000);
+        });
+        return;
+      }
+
+      // Sucesso — reload completo para o dashboard
+      // Usa window.location.href (full reload) para garantir que
+      // o useAuthGuard no dashboard layout leia a sessão corretamente
+      window.location.href = "/";
+    }).catch((err) => {
+      console.error("[auth/callback] Unexpected error:", err);
+      setError("Erro inesperado. Tente novamente.");
+      setTimeout(() => { window.location.href = "/login"; }, 3000);
     });
-
-    // 2) Escuta SIGNED_IN — captura quando o auto-exchange completa
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (handled) return;
-
-        if (event === "SIGNED_IN" && session?.user?.email) {
-          if (isEmailAllowed(session.user.email)) {
-            handled = true;
-            window.location.href = "/";
-          } else {
-            handled = true;
-            supabase.auth.signOut();
-            setError("Email não autorizado. Contate o administrador.");
-            setTimeout(() => { window.location.href = "/login"; }, 3000);
-          }
-        }
-      }
-    );
-
-    // 3) Timeout — se após 10s ainda não autenticou, volta para login
-    const timeout = setTimeout(() => {
-      if (!handled) {
-        handled = true;
-        setError("Tempo esgotado. Tente novamente.");
-        setTimeout(() => { window.location.href = "/login"; }, 2000);
-      }
-    }, 10000);
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
   }, []);
 
   return (

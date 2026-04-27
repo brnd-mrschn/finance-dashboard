@@ -59,14 +59,16 @@ export function useAuthGuard() {
 
     checkAuth();
 
-    // Escuta mudanças de auth (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED)
+    // Escuta mudanças de auth (INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (cancelled) return;
 
         console.log("[useAuthGuard] Auth event:", event);
 
-        if (event === "SIGNED_IN" && session?.user?.email) {
+        // INITIAL_SESSION: disparado na primeira carga com sessão existente
+        // SIGNED_IN: disparado quando o usuário faz login
+        if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user?.email) {
           if (isEmailAllowed(session.user.email)) {
             authStateRef.current = "authenticated";
             setAuthState("authenticated");
