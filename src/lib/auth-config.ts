@@ -19,8 +19,8 @@ const ALLOWED_EMAILS_DEFAULT = ["*"];
  * Se contém "*", permite qualquer email.
  */
 export function getAllowedEmails(): string[] {
-  const envEmails = process.env.NEXT_PUBLIC_ALLOWED_EMAILS;
-  if (envEmails && envEmails.trim().length > 0) {
+  const envEmails = process.env.NEXT_PUBLIC_ALLOWED_EMAILS?.trim();
+  if (envEmails && envEmails.length > 0) {
     return envEmails
       .split(",")
       .map((email) => email.trim().toLowerCase())
