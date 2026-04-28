@@ -9,12 +9,12 @@ type AuthState = "loading" | "authenticated" | "unauthenticated";
 /**
  * Hook de proteção de rota client-side.
  *
- * Fluxo OAuth: login → Google → Supabase redirecta para /?code=xxx
- * Com detectSessionInUrl=true (padrão), o Supabase client troca
- * o código automaticamente e dispara onAuthStateChange.
+ * Com a mudança para @supabase/ssr + Route Handler server-side,
+ * o PKCE code exchange acontece no servidor (/auth/callback Route Handler).
+ * Este hook apenas verifica se há sessão ativa nos cookies.
  *
- * IMPORTANTE: Quando há ?code= na URL, NÃO redireciona para /login.
- * O Supabase está processando o código — aguardamos o evento SIGNED_IN.
+ * Fluxo: login → Google → /auth/callback (server) → / (com cookies de sessão)
+ * Aqui: lê a sessão dos cookies → authenticated ou unauthenticated.
  */
 export function useAuthGuard() {
   const [authState, setAuthState] = useState<AuthState>("loading");
@@ -37,10 +37,6 @@ export function useAuthGuard() {
 
     let cancelled = false;
 
-    // Detecta se há código PKCE na URL (retorno do OAuth)
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasCode = urlParams.has("code");
-
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -48,20 +44,9 @@ export function useAuthGuard() {
         if (cancelled) return;
 
         if (session?.user?.email && isEmailAllowed(session.user.email)) {
-          // Limpa ?code= da URL
-          if (hasCode) {
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
           authStateRef.current = "authenticated";
           setAuthState("authenticated");
-        } else if (hasCode) {
-          // Há código PKCE mas sessão ainda não foi estabelecida.
-          // NÃO redireciona! O detectSessionInUrl está trocando o código.
-          // onAuthStateChange vai capturar o SIGNED_IN.
-          console.log("[useAuthGuard] PKCE code in URL, waiting for session...");
-          // Mantém estado "loading" — aguarda onAuthStateChange
         } else {
-          // Sem sessão e sem código — não autenticado
           authStateRef.current = "unauthenticated";
           setAuthState("unauthenticated");
         }
@@ -76,7 +61,7 @@ export function useAuthGuard() {
 
     checkAuth();
 
-    // Escuta mudanças de auth — captura SIGNED_IN após code exchange
+    // Escuta mudanças de auth (ex: sign out)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (cancelled) return;
@@ -85,10 +70,6 @@ export function useAuthGuard() {
 
         if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user?.email) {
           if (isEmailAllowed(session.user.email)) {
-            // Limpa ?code= da URL se ainda presente
-            if (window.location.search.includes("code=")) {
-              window.history.replaceState({}, document.title, window.location.pathname);
-            }
             authStateRef.current = "authenticated";
             setAuthState("authenticated");
           } else {
@@ -103,15 +84,15 @@ export function useAuthGuard() {
       }
     );
 
-    // Timeout de segurança — se após 20s ainda está loading sem sessão,
-    // redireciona para login. Usa ref para ler o valor ATUAL do estado.
+    // Timeout de segurança — se após 15s ainda está loading sem sessão,
+    // redireciona para login.
     const timeout = setTimeout(() => {
       if (!cancelled && authStateRef.current === "loading") {
         console.log("[useAuthGuard] Timeout — redirecting to login");
         authStateRef.current = "unauthenticated";
         setAuthState("unauthenticated");
       }
-    }, 20000);
+    }, 15000);
 
     return () => {
       cancelled = true;

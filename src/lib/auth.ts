@@ -1,22 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { isEmailAllowed } from "@/lib/auth-config";
-
-// Cliente Supabase server-side (singleton)
-let serverSupabase: ReturnType<typeof createClient> | null = null;
-
-function getServerSupabase() {
-  if (serverSupabase) return serverSupabase;
-  // .trim() remove \r\n de arquivos .env com line endings Windows
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  // Suporta ambos os nomes: ANON_KEY (legado) e PUBLISHABLE_KEY (novo nome do Supabase)
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
-  if (!url || !key) return null;
-  serverSupabase = createClient(url, key);
-  return serverSupabase;
-}
 
 export type AuthResult =
   | { authorized: true; userId: string; email: string }
@@ -26,8 +10,8 @@ export type AuthResult =
  * Verifica autenticação em API routes.
  *
  * - Se `NEXT_PUBLIC_AUTH_DISABLED=true`, retorna "dev-user" (modo desenvolvimento)
- * - Caso contrário, verifica o token JWT do Supabase no header Authorization
- *   ou nos cookies, e checa se o e-mail está na lista de permitidos.
+ * - Caso contrário, usa @supabase/ssr createServerClient para ler a sessão
+ *   dos cookies e verifica se o e-mail está na lista de permitidos.
  */
 export async function requireAuth(request: Request): Promise<AuthResult> {
   // Modo desenvolvimento: auth desativada
@@ -35,8 +19,12 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
     return { authorized: true, userId: "dev-user", email: "dev@test.com" };
   }
 
-  const supabase = getServerSupabase();
-  if (!supabase) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
+
+  if (!supabaseUrl || !supabaseKey) {
     return {
       authorized: false,
       response: NextResponse.json(
@@ -46,36 +34,32 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
     };
   }
 
-  // Extrai token do header Authorization
-  const authHeader = request.headers.get("authorization");
-  let token: string | null = null;
+  // Cria um server client que lê os cookies do request
+  // Nota: em API routes, não precisamos setar cookies (setAll é no-op)
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      getAll() {
+        const cookieHeader = request.headers.get("cookie") ?? "";
+        return cookieHeader.split(";").map((c) => {
+          const [name, ...v] = c.trim().split("=");
+          return { name, value: v.join("=") };
+        });
+      },
+      setAll() {
+        // API routes não precisam setar cookies de sessão
+        // (isso é feito pelo Route Handler de callback)
+      },
+    },
+  });
 
-  if (authHeader?.startsWith("Bearer ")) {
-    token = authHeader.slice(7);
-  }
-
-  // Fallback: tenta extrair dos cookies do Supabase
-  if (!token) {
-    token = extractTokenFromCookies(request);
-  }
-
-  if (!token) {
-    return {
-      authorized: false,
-      response: NextResponse.json(
-        { error: "Não autenticado" },
-        { status: 401 }
-      ),
-    };
-  }
-
-  const { data, error } = await supabase.auth.getUser(token);
+  // Obtém o usuário a partir da sessão nos cookies
+  const { data, error } = await supabase.auth.getUser();
 
   if (error || !data.user) {
     return {
       authorized: false,
       response: NextResponse.json(
-        { error: "Token inválido ou expirado" },
+        { error: "Não autenticado" },
         { status: 401 }
       ),
     };
@@ -104,34 +88,4 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
   }
 
   return { authorized: true, userId: data.user.id, email };
-}
-
-/**
- * Extrai o access token dos cookies do Supabase.
- * Formato: sb-{ref}-auth-token=URL_ENCODED_JSON
- */
-function extractTokenFromCookies(request: Request): string | null {
-  const cookieHeader = request.headers.get("cookie") ?? "";
-
-  // Procura por cookies do Supabase (formato: sb-{ref}-auth-token)
-  const sbCookieMatch = cookieHeader.match(
-    /sb-[a-zA-Z0-9]+-auth-token=([^;]+)/
-  );
-  if (!sbCookieMatch) return null;
-
-  try {
-    const decoded = decodeURIComponent(sbCookieMatch[1]);
-    const parsed = JSON.parse(decoded);
-    // O cookie pode ser um array [accessToken, refreshToken, ...] ou um objeto
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed[0];
-    }
-    if (parsed?.access_token) {
-      return parsed.access_token;
-    }
-  } catch {
-    // Ignora erro de parsing
-  }
-
-  return null;
 }

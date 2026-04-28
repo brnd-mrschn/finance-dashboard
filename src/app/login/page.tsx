@@ -10,6 +10,17 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Lê erro da URL (vindo do callback Route Handler)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get("error");
+    if (error) {
+      setErrorMessage(decodeURIComponent(error));
+      // Limpa ?error= da URL
+      window.history.replaceState({}, document.title, "/login");
+    }
+  }, []);
+
   // Se já está logado, redireciona para o dashboard
   useEffect(() => {
     if (!supabase) return;
@@ -25,15 +36,13 @@ export default function LoginPage() {
     setLoading(true);
     setErrorMessage(null);
 
-    // Usa NEXT_PUBLIC_SITE_URL se configurado (produção), senão window.location.origin (dev)
-    const redirectTo = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    // Redireciona para /auth/callback — Route Handler server-side
+    // faz o PKCE code exchange e seta cookies de sessão.
+    const redirectTo = `${window.location.origin}/auth/callback`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        // Redireciona para a raiz do site de produção.
-        // O Supabase client com detectSessionInUrl=true troca
-        // o código PKCE automaticamente.
         redirectTo,
       },
     });
