@@ -40,10 +40,13 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
     cookies: {
       getAll() {
         const cookieHeader = request.headers.get("cookie") ?? "";
+        if (!cookieHeader) return [];
         return cookieHeader.split(";").map((c) => {
-          const [name, ...v] = c.trim().split("=");
+          const trimmed = c.trim();
+          if (!trimmed) return null;
+          const [name, ...v] = trimmed.split("=");
           return { name, value: v.join("=") };
-        });
+        }).filter((c): c is { name: string; value: string } => c !== null && c.name.length > 0);
       },
       setAll() {
         // API routes não precisam setar cookies de sessão
