@@ -310,29 +310,36 @@ export default function Dashboard() {
     expenseByOrigin.push({ name: "Sem origem", value: noOriginExpense });
   }
 
-  const originColors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8"];
+  const chartPalette = ["#43b581", "#ed4245", "#3b82f6", "#8b5cf6", "#f59e0b", "#14b8a6", "#ec4899"];
+  const originColors = chartPalette;
 
   const monthlyData = filteredTransactions.reduce<
-    Record<string, { month: string; income: number; expense: number }>
+    Record<string, { month: string; monthDate: Date; income: number; expense: number }>
   >((accumulator, transaction) => {
     const d = new Date(transaction.date);
-    const month = `${d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")}/${d.getFullYear()}`;
+    const monthDate = new Date(d.getFullYear(), d.getMonth(), 1);
+    const monthKey = monthDate.toISOString();
+    const monthLabel = `${d
+      .toLocaleDateString("pt-BR", { month: "short" })
+      .replace(".", "")}/${d.getFullYear()}`;
 
-    if (!accumulator[month]) {
-      accumulator[month] = { month, income: 0, expense: 0 };
+    if (!accumulator[monthKey]) {
+      accumulator[monthKey] = { month: monthLabel, monthDate, income: 0, expense: 0 };
     }
 
     if (transaction.type === "INCOME") {
-      accumulator[month].income += transaction.amount;
+      accumulator[monthKey].income += transaction.amount;
     } else {
-      accumulator[month].expense += transaction.amount;
+      accumulator[monthKey].expense += transaction.amount;
     }
 
     return accumulator;
   }, {});
 
-  const colors = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
-  const barData = Object.values(monthlyData);
+  const colors = chartPalette;
+  const barData = Object.values(monthlyData).sort(
+    (a, b) => a.monthDate.getTime() - b.monthDate.getTime()
+  );
 
   return (
     <motion.div
@@ -624,7 +631,13 @@ export default function Dashboard() {
                   colors,
                   legend: { show: true, position: "bottom", labels: { colors: "var(--foreground)" }, fontSize: "11px" },
                   dataLabels: { enabled: false },
-                  tooltip: { theme: "dark" },
+                  tooltip: {
+                    theme: "dark",
+                    y: {
+                      formatter: (val: number) =>
+                        val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+                    },
+                  },
                   chart: { background: "transparent" },
                   stroke: { width: 0 },
                   plotOptions: {
@@ -652,7 +665,13 @@ export default function Dashboard() {
                   colors: originColors,
                   legend: { show: true, position: "bottom", labels: { colors: "var(--foreground)" }, fontSize: "11px" },
                   dataLabels: { enabled: false },
-                  tooltip: { theme: "dark" },
+                  tooltip: {
+                    theme: "dark",
+                    y: {
+                      formatter: (val: number) =>
+                        val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+                    },
+                  },
                   chart: { background: "transparent" },
                   stroke: { width: 0 },
                   plotOptions: {
@@ -730,7 +749,13 @@ export default function Dashboard() {
                   },
                   tickPlacement: "on",
                 },
-                yaxis: { labels: { style: { colors: "var(--foreground)" } } },
+                yaxis: {
+                  labels: {
+                    style: { colors: "var(--foreground)" },
+                    formatter: (val: number) =>
+                      val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+                  },
+                },
                 legend: {
                   show: true,
                   showForSingleSeries: true,
@@ -739,7 +764,13 @@ export default function Dashboard() {
                   labels: { colors: "var(--foreground)" },
                 },
                 grid: { borderColor: "#2e2e2e", strokeDashArray: 4 },
-                tooltip: { theme: "dark" },
+                tooltip: {
+                  theme: "dark",
+                  y: {
+                    formatter: (val: number) =>
+                      val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+                  },
+                },
               }}
             />
           </div>
@@ -785,7 +816,11 @@ export default function Dashboard() {
                 yaxis: [
                   {
                     seriesName: "Receitas",
-                    labels: { style: { colors: "var(--foreground)" } },
+                    labels: {
+                      style: { colors: "var(--foreground)" },
+                      formatter: (val: number) =>
+                        val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+                    },
                   },
                   {
                     seriesName: "Receitas",
@@ -794,14 +829,24 @@ export default function Dashboard() {
                   {
                     seriesName: "Saldo",
                     opposite: true,
-                    labels: { style: { colors: "var(--foreground)" } },
+                    labels: {
+                      style: { colors: "var(--foreground)" },
+                      formatter: (val: number) =>
+                        val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+                    },
                   },
                 ],
                 legend: {
                   show: false,
                 },
                 grid: { borderColor: "#2e2e2e", strokeDashArray: 4 },
-                tooltip: { theme: "dark" },
+                tooltip: {
+                  theme: "dark",
+                  y: {
+                    formatter: (val: number) =>
+                      val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+                  },
+                },
               }}
             />
           </div>
