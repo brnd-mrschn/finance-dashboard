@@ -593,9 +593,16 @@ export default function DataPage() {
                             {(() => {
                               const cat = categories.find((c) => c.id === t.categoryId);
                               if (!cat) return <span className="italic text-gray-400">Sem categoria</span>;
+                              const color = cat.color || "#888";
                               return (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium" style={{ background: (cat.color || '#888') + '20', color: cat.color || '#888', border: `1px solid ${cat.color || '#888'}40` }}>
-                                  <span className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cat.color || '#888' }} />
+                                <span
+                                  className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
+                                  style={{
+                                    background: `${color}22`,
+                                    color,
+                                    border: `1px solid ${color}55`,
+                                  }}
+                                >
                                   {cat.name}
                                 </span>
                               );
