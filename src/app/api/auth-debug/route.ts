@@ -52,28 +52,43 @@ export async function GET(req: Request) {
         },
       });
 
-      const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        sessionInfo = { status: "erro", error: error.message };
-      } else if (!data.user) {
-        sessionInfo = { status: "sem sessão — cookies sb-* ausentes ou expirados" };
+      // Tenta getSession() primeiro (funciona com cookies fragmentados .0/.1)
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const user = sessionData?.session?.user ?? null;
+
+      if (sessionError) {
+        sessionInfo = { status: "erro (getSession)", error: sessionError.message };
+      } else if (!user) {
+        // Fallback: tenta getUser()
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError) {
+          sessionInfo = { status: "erro (getUser)", error: userError.message };
+        } else if (!userData.user) {
+          sessionInfo = { status: "sem sessão — cookies sb-* ausentes ou expirados" };
+        } else {
+          sessionInfo = {
+            status: "autenticado (via getUser)",
+            userId: userData.user.id,
+            email: userData.user.email,
+          };
+        }
       } else {
         sessionInfo = {
-          status: "autenticado",
-          userId: data.user.id,
-          email: data.user.email,
-          emailConfirmed: data.user.email_confirmed_at ? "sim" : "não",
+          status: "autenticado (via getSession)",
+          userId: user.id,
+          email: user.email,
+          emailConfirmed: user.email_confirmed_at ? "sim" : "não",
         };
 
         // Verifica se o usuário existe no banco
         try {
           const { prisma } = await import("@/lib/db");
-          const user = await prisma.user.findUnique({ where: { id: data.user.id } });
+          const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const profiles = await (prisma as any).profile.findMany({ where: { ownerId: data.user.id } });
+          const profiles = await (prisma as any).profile.findMany({ where: { ownerId: user.id } });
           dbInfo = {
             status: "conectado",
-            userExistsInDb: !!user,
+            userExistsInDb: !!dbUser,
             profileCount: profiles.length,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             profiles: profiles.map((p: any) => ({ id: p.id, name: p.name })),

@@ -53,20 +53,44 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
     },
   });
 
-  // Obtém o usuário a partir da sessão nos cookies
-  const { data, error } = await supabase.auth.getUser();
+  // Obtém a sessão a partir dos cookies (leitura local, sem round-trip ao Supabase)
+  // Nota: getSession() é suficiente para API routes internas — o token já foi
+  // validado pelo Supabase no momento do login (callback PKCE).
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
-  if (error || !data.user) {
-    return {
-      authorized: false,
-      response: NextResponse.json(
-        { error: "Não autenticado" },
-        { status: 401 }
-      ),
-    };
+  if (sessionError || !sessionData.session) {
+    // Fallback: tenta getUser() caso getSession() falhe
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) {
+      return {
+        authorized: false,
+        response: NextResponse.json(
+          { error: "Não autenticado" },
+          { status: 401 }
+        ),
+      };
+    }
+    const email = userData.user.email;
+    if (!email || !isEmailAllowed(email)) {
+      return {
+        authorized: false,
+        response: NextResponse.json(
+          { error: "E-mail não autorizado" },
+          { status: 403 }
+        ),
+      };
+    }
+    const { prisma } = await import("@/lib/db");
+    const existingUser = await prisma.user.findUnique({ where: { id: userData.user.id } });
+    if (!existingUser) {
+      await prisma.user.create({ data: { id: userData.user.id, email } });
+    }
+    return { authorized: true, userId: userData.user.id, email };
   }
 
-  const email = data.user.email;
+  const user = sessionData.session.user;
+  const email = user.email;
+
   if (!email || !isEmailAllowed(email)) {
     return {
       authorized: false,
@@ -80,15 +104,15 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
   // Garante que o usuário existe no banco
   const { prisma } = await import("@/lib/db");
   const existingUser = await prisma.user.findUnique({
-    where: { id: data.user.id },
+    where: { id: user.id },
   });
   if (!existingUser) {
     await prisma.user.create({
-      data: { id: data.user.id, email },
+      data: { id: user.id, email },
     });
   }
 
-  return { authorized: true, userId: data.user.id, email };
+  return { authorized: true, userId: user.id, email };
 }
 
 /**
