@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
+import { useProfile } from "@/lib/profile-context";
 // ApexCharts precisa ser importado dinamicamente para evitar SSR issues
 const ApexAreaChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -14,18 +15,22 @@ type Transaction = {
 };
 
 export default function Finance() {
+  const { activeProfile, loading: profileLoading } = useProfile();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/transactions")
+    if (!activeProfile) return;
+    fetch("/api/transactions", {
+      headers: { "x-profile-id": activeProfile.id },
+    })
       .then((res) => res.json())
       .then((data: Transaction[]) => setTransactions(data))
       .catch((err) => {
         console.error(err);
         setError("Erro ao carregar dados");
       });
-  }, []);
+  }, [activeProfile]);
 
   // Dados para gráfico de área — timeseries irregular com 3 séries
   const sorted = [...transactions].sort(
@@ -54,8 +59,12 @@ export default function Finance() {
     balanceData.push([ts, balance]);
   });
 
+  if (profileLoading) {
+    return <div className="flex items-center justify-center min-h-[200px] text-[var(--muted-foreground)] text-sm">Carregando perfil...</div>;
+  }
+
   return (
-    <motion.div 
+    <motion.div
       className="min-h-screen p-0 font-sans"
       style={{ color: 'var(--foreground)' }}
       initial={{ opacity: 0 }}

@@ -9,6 +9,7 @@ const ApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 import { Card } from "@/app/components/ui/card";
 import { DropdownFilter } from "@/app/components/ui/dropdown-filter";
+import { useProfile } from "@/lib/profile-context";
 
 const SPOTLIGHT_RADIUS = 250;
 
@@ -150,6 +151,7 @@ type Origin = {
 };
 
 export default function Dashboard() {
+  const { activeProfile, loading: profileLoading } = useProfile();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [origins, setOrigins] = useState<Origin[]>([]);
@@ -181,7 +183,10 @@ export default function Dashboard() {
   const [searchResults, setSearchResults] = useState<Transaction[]>([]);
 
   useEffect(() => {
-    fetch("/api/transactions")
+    if (!activeProfile) return;
+    const headers = { "x-profile-id": activeProfile.id };
+
+    fetch("/api/transactions", { headers })
       .then((res) => res.json())
       .then((data: Transaction[]) => setTransactions(data))
       .catch((fetchError) => {
@@ -189,16 +194,16 @@ export default function Dashboard() {
         setError("Erro ao carregar dados");
       });
 
-    fetch("/api/categories")
+    fetch("/api/categories", { headers })
       .then((res) => res.json())
       .then((data: Category[]) => setCategories(data))
       .catch(console.error);
 
-    fetch("/api/origins")
+    fetch("/api/origins", { headers })
       .then((res) => res.json())
       .then((data: Origin[]) => setOrigins(data))
       .catch(console.error);
-  }, []);
+  }, [activeProfile]);
 
   const getCategoryName = (categoryId: string) => {
     return categories.find((category) => category.id === categoryId)?.name ?? "Sem categoria";

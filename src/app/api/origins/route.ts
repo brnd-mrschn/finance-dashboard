@@ -2,17 +2,21 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireProfile } from "@/lib/auth";
 import { validateBody, createOriginSchema } from "@/lib/validations";
 
 export async function GET(req: Request) {
   const auth = await requireAuth(req);
   if (!auth.authorized) return auth.response;
 
+  const profileResult = await requireProfile(req, auth.userId);
+  if (!profileResult.ok) return profileResult.response;
+
   try {
     const { prisma } = await import("@/lib/db");
 
     const origins = await prisma.origin.findMany({
+      where: { profileId: profileResult.profileId },
       orderBy: { name: "asc" },
     });
 
@@ -27,6 +31,9 @@ export async function POST(req: Request) {
   const auth = await requireAuth(req);
   if (!auth.authorized) return auth.response;
 
+  const profileResult = await requireProfile(req, auth.userId);
+  if (!profileResult.ok) return profileResult.response;
+
   const body = await req.json();
   const validation = validateBody(createOriginSchema, body);
   if (!validation.success) return validation.response;
@@ -36,6 +43,7 @@ export async function POST(req: Request) {
   const origin = await prisma.origin.create({
     data: {
       name: validation.data.name,
+      profileId: profileResult.profileId,
     },
   });
 

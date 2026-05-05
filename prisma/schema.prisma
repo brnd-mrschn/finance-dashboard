@@ -11,6 +11,37 @@ model User {
   email        String        @unique
   createdAt    DateTime      @default(now())
   transactions Transaction[]
+  ownedProfiles Profile[]    @relation("ProfileOwner")
+  profileAccess ProfileAccess[]
+}
+
+/// Um perfil agrupa transações, categorias e origens de forma isolada.
+/// Cada usuário pode ter vários perfis e pode conceder acesso a outros usuários.
+model Profile {
+  id           String          @id @default(uuid())
+  name         String
+  ownerId      String
+  createdAt    DateTime        @default(now())
+  owner        User            @relation("ProfileOwner", fields: [ownerId], references: [id])
+  transactions Transaction[]
+  categories   Category[]
+  origins      Origin[]
+  accesses     ProfileAccess[]
+
+  @@index([ownerId])
+}
+
+/// Controla quais usuários têm acesso a quais perfis (além do dono).
+model ProfileAccess {
+  id        String   @id @default(uuid())
+  profileId String
+  userId    String
+  createdAt DateTime @default(now())
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, userId])
+  @@index([userId])
 }
 
 model Transaction {
@@ -19,6 +50,7 @@ model Transaction {
   description String
   date        DateTime
   userId      String
+  profileId   String
   categoryId  String?
   createdAt   DateTime        @default(now())
   type        TransactionType
@@ -26,8 +58,10 @@ model Transaction {
   category    Category?       @relation(fields: [categoryId], references: [id])
   origin      Origin?         @relation(fields: [originId], references: [id])
   user        User            @relation(fields: [userId], references: [id])
+  profile     Profile         @relation(fields: [profileId], references: [id])
 
   @@index([userId])
+  @@index([profileId])
   @@index([categoryId])
   @@index([originId])
   @@index([date])
@@ -42,16 +76,23 @@ model Category {
   createdAt    DateTime        @default(now())
   expected     Float?
   color        String?
+  profileId    String
   transactions Transaction[]
+  profile      Profile         @relation(fields: [profileId], references: [id])
 
   @@index([type])
+  @@index([profileId])
 }
 
 model Origin {
   id           String        @id @default(uuid())
-  name         String        @unique
+  name         String
   createdAt    DateTime      @default(now())
+  profileId    String
   transactions Transaction[]
+  profile      Profile       @relation(fields: [profileId], references: [id])
+
+  @@index([profileId])
 }
 
 enum TransactionType {

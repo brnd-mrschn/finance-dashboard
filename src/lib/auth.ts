@@ -35,7 +35,6 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
   }
 
   // Cria um server client que lê os cookies do request
-  // Nota: em API routes, não precisamos setar cookies (setAll é no-op)
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       getAll() {
@@ -50,7 +49,6 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
       },
       setAll() {
         // API routes não precisam setar cookies de sessão
-        // (isso é feito pelo Route Handler de callback)
       },
     },
   });
@@ -91,4 +89,45 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
   }
 
   return { authorized: true, userId: data.user.id, email };
+}
+
+/**
+ * Extrai e valida o profileId do header x-profile-id.
+ * Verifica se o usuário tem acesso ao perfil (dono ou acesso compartilhado).
+ * Retorna o profileId ou uma resposta de erro.
+ */
+export async function requireProfile(
+  request: Request,
+  userId: string
+): Promise<{ ok: true; profileId: string } | { ok: false; response: NextResponse }> {
+  const profileId = request.headers.get("x-profile-id");
+
+  if (!profileId) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Perfil não selecionado" }, { status: 400 }),
+    };
+  }
+
+  const { prisma } = await import("@/lib/db");
+
+  // Verifica se o usuário é dono ou tem acesso compartilhado
+  const profile = await prisma.profile.findFirst({
+    where: {
+      id: profileId,
+      OR: [
+        { ownerId: userId },
+        { accesses: { some: { userId } } },
+      ],
+    },
+  });
+
+  if (!profile) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Perfil não encontrado ou sem acesso" }, { status: 403 }),
+    };
+  }
+
+  return { ok: true, profileId };
 }

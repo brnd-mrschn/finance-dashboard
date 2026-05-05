@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireProfile } from "@/lib/auth";
 import { validateBody, updateTransactionSchema } from "@/lib/validations";
 
 export async function PUT(
@@ -12,6 +12,9 @@ export async function PUT(
   const auth = await requireAuth(req);
   if (!auth.authorized) return auth.response;
 
+  const profileResult = await requireProfile(req, auth.userId);
+  if (!profileResult.ok) return profileResult.response;
+
   const { id } = await params;
   const body = await req.json();
 
@@ -20,9 +23,9 @@ export async function PUT(
 
   const { prisma } = await import("@/lib/db");
 
-  // Verifica se a transação pertence ao usuário
+  // Verifica se a transação pertence ao perfil ativo
   const existing = await prisma.transaction.findFirst({
-    where: { id, userId: auth.userId },
+    where: { id, profileId: profileResult.profileId },
   });
   if (!existing) {
     return NextResponse.json(
@@ -31,7 +34,6 @@ export async function PUT(
     );
   }
 
-  // Constrói objeto de update apenas com campos válidos
   const validated = validation.data;
   const data: Record<string, unknown> = {};
 
@@ -57,12 +59,14 @@ export async function DELETE(
   const auth = await requireAuth(req);
   if (!auth.authorized) return auth.response;
 
+  const profileResult = await requireProfile(req, auth.userId);
+  if (!profileResult.ok) return profileResult.response;
+
   const { id } = await params;
   const { prisma } = await import("@/lib/db");
 
-  // Verifica se a transação pertence ao usuário
   const existing = await prisma.transaction.findFirst({
-    where: { id, userId: auth.userId },
+    where: { id, profileId: profileResult.profileId },
   });
   if (!existing) {
     return NextResponse.json(
@@ -71,9 +75,7 @@ export async function DELETE(
     );
   }
 
-  await prisma.transaction.delete({
-    where: { id },
-  });
+  await prisma.transaction.delete({ where: { id } });
 
   return NextResponse.json({ success: true });
 }

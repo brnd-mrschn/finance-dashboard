@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { FiTrash2, FiPlus, FiChevronUp, FiChevronDown, FiUpload } from "react-icons/fi";
 import { parseFile, type ParsedTransaction } from "@/lib/import-parser";
 import { motion, AnimatePresence } from "framer-motion";
+import { useProfile } from "@/lib/profile-context";
 
 type TransactionType = "INCOME" | "EXPENSE";
 
@@ -79,6 +80,20 @@ function SortIcon({
 }
 
 export default function DataPage() {
+  const { activeProfile, loading: profileLoading } = useProfile();
+
+  // Helper: fetch com header x-profile-id injetado automaticamente
+  const pfetch = useCallback(
+    (url: string, init?: RequestInit) => {
+      const headers: Record<string, string> = {
+        ...(init?.headers as Record<string, string> | undefined),
+        ...(activeProfile ? { "x-profile-id": activeProfile.id } : {}),
+      };
+      return fetch(url, { ...init, headers });
+    },
+    [activeProfile]
+  );
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [origins, setOrigins] = useState<Origin[]>([]);
@@ -157,19 +172,20 @@ export default function DataPage() {
   });
 
   useEffect(() => {
-    fetch("/api/transactions")
+    if (!activeProfile) return;
+    pfetch("/api/transactions")
       .then((res) => res.json())
       .then((data: Transaction[]) => setTransactions(data))
       .catch(() => setError("Erro ao carregar transações"));
-    fetch("/api/categories")
+    pfetch("/api/categories")
       .then((res) => res.json())
       .then((data: Category[]) => setCategories(data))
       .catch(() => setError("Erro ao carregar categorias"));
-    fetch("/api/origins")
+    pfetch("/api/origins")
       .then((res) => res.json())
       .then((data: Origin[]) => setOrigins(data))
       .catch(() => setError("Erro ao carregar origens"));
-  }, []);
+  }, [activeProfile, pfetch]);
 
   return (
     <motion.div
@@ -202,7 +218,7 @@ export default function DataPage() {
                       setConfirmModal(null);
                       setSaving(true);
                       const ids = Array.from(selectedTransactions);
-                      await fetch('/api/transactions/bulk-delete', {
+                      await pfetch('/api/transactions/bulk-delete', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ ids }),
@@ -246,7 +262,7 @@ export default function DataPage() {
                       setConfirmModal(null);
                       setSaving(true);
                       const ids = Array.from(selectedCategories);
-                      await fetch('/api/categories/bulk-delete', {
+                      await pfetch('/api/categories/bulk-delete', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ ids }),
@@ -387,7 +403,7 @@ export default function DataPage() {
                               return;
                             }
                             setSaving(true);
-                            const res = await fetch("/api/transactions", {
+                            const res = await pfetch("/api/transactions", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({
@@ -433,7 +449,7 @@ export default function DataPage() {
                               const value = e.target.value;
                               if (value === t.description) { setEditingTransaction(null); setEditingField(null); return; }
                               setSaving(true);
-                              await fetch(`/api/transactions/${t.id}`, {
+                              await pfetch(`/api/transactions/${t.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...t, description: value }),
@@ -466,7 +482,7 @@ export default function DataPage() {
                               const value = e.target.value;
                               if (value === t.date.slice(0, 10)) { setEditingTransaction(null); setEditingField(null); return; }
                               setSaving(true);
-                              await fetch(`/api/transactions/${t.id}`, {
+                              await pfetch(`/api/transactions/${t.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...t, date: value }),
@@ -499,7 +515,7 @@ export default function DataPage() {
                               const value = parseFloat(e.target.value);
                               if (value === t.amount) { setEditingTransaction(null); setEditingField(null); return; }
                               setSaving(true);
-                              await fetch(`/api/transactions/${t.id}`, {
+                              await pfetch(`/api/transactions/${t.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...t, amount: value }),
@@ -531,7 +547,7 @@ export default function DataPage() {
                               const value = e.target.value;
                               if (value === t.type) { setEditingTransaction(null); setEditingField(null); return; }
                               setSaving(true);
-                              await fetch(`/api/transactions/${t.id}`, {
+                              await pfetch(`/api/transactions/${t.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...t, type: value }),
@@ -566,7 +582,7 @@ export default function DataPage() {
                               const value = e.target.value;
                               if (value === (t.categoryId || "")) { setEditingTransaction(null); setEditingField(null); return; }
                               setSaving(true);
-                              await fetch(`/api/transactions/${t.id}`, {
+                              await pfetch(`/api/transactions/${t.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...t, categoryId: value })
@@ -621,7 +637,7 @@ export default function DataPage() {
                               const value = e.target.value;
                               if (value === (t.originId || "")) { setEditingTransaction(null); setEditingField(null); return; }
                               setSaving(true);
-                              await fetch(`/api/transactions/${t.id}`, {
+                              await pfetch(`/api/transactions/${t.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...t, originId: value || null }),
@@ -776,7 +792,7 @@ export default function DataPage() {
                               return;
                             }
                             setSaving(true);
-                            const res = await fetch("/api/categories", {
+                            const res = await pfetch("/api/categories", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify(newCategory),
@@ -818,7 +834,7 @@ export default function DataPage() {
                               const value = e.target.value;
                               if (value === c.name) { setEditingCategory(null); setEditingField(null); return; }
                               setSaving(true);
-                              await fetch(`/api/categories/${c.id}`, {
+                              await pfetch(`/api/categories/${c.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...c, name: value })
@@ -852,7 +868,7 @@ export default function DataPage() {
                               const value = e.target.value;
                               if (value === c.group) { setEditingCategory(null); setEditingField(null); return; }
                               setSaving(true);
-                              await fetch(`/api/categories/${c.id}`, {
+                              await pfetch(`/api/categories/${c.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...c, group: value })
@@ -883,7 +899,7 @@ export default function DataPage() {
                               const value = e.target.value;
                               if (value === c.subgroup) { setEditingCategory(null); setEditingField(null); return; }
                               setSaving(true);
-                              await fetch(`/api/categories/${c.id}`, {
+                              await pfetch(`/api/categories/${c.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...c, subgroup: value })
@@ -914,7 +930,7 @@ export default function DataPage() {
                               const value = e.target.value;
                               if (value === c.type) { setEditingCategory(null); setEditingField(null); return; }
                               setSaving(true);
-                              await fetch(`/api/categories/${c.id}`, {
+                              await pfetch(`/api/categories/${c.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...c, type: value })
@@ -949,7 +965,7 @@ export default function DataPage() {
                               const value = e.target.value ? parseFloat(e.target.value) : null;
                               if (value === (c.expected ?? null)) { setEditingCategory(null); setEditingField(null); return; }
                               setSaving(true);
-                              await fetch(`/api/categories/${c.id}`, {
+                              await pfetch(`/api/categories/${c.id}`, {
                                 method: "PUT",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...c, expected: value })
@@ -1138,14 +1154,14 @@ export default function DataPage() {
                   onClick={async () => {
                     setImporting(true);
                     const selected = importData.filter((_, i) => importSelected.has(i));
-                    const res = await fetch('/api/transactions/import', {
+                    const res = await pfetch('/api/transactions/import', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ transactions: selected, originId: importOriginId || null }),
                     });
                     const result = await res.json();
                     if (res.ok) {
-                      const updated = await fetch('/api/transactions').then(r => r.json());
+                      const updated = await pfetch('/api/transactions').then(r => r.json());
                       setTransactions(updated);
                       setImportModal(false);
                       setToast(`${result.imported} transações importadas!`);

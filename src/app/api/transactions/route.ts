@@ -2,17 +2,20 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireProfile } from "@/lib/auth";
 import { validateBody, createTransactionSchema } from "@/lib/validations";
 
 export async function GET(req: Request) {
   const auth = await requireAuth(req);
   if (!auth.authorized) return auth.response;
 
+  const profileResult = await requireProfile(req, auth.userId);
+  if (!profileResult.ok) return profileResult.response;
+
   const { prisma } = await import("@/lib/db");
 
   const transactions = await prisma.transaction.findMany({
-    where: { userId: auth.userId },
+    where: { profileId: profileResult.profileId },
     orderBy: { date: "desc" },
   });
 
@@ -22,6 +25,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const auth = await requireAuth(req);
   if (!auth.authorized) return auth.response;
+
+  const profileResult = await requireProfile(req, auth.userId);
+  if (!profileResult.ok) return profileResult.response;
 
   const body = await req.json();
   const validation = validateBody(createTransactionSchema, body);
@@ -38,6 +44,7 @@ export async function POST(req: Request) {
       originId: validation.data.originId || null,
       categoryId: validation.data.categoryId || null,
       userId: auth.userId,
+      profileId: profileResult.profileId,
     },
   });
 

@@ -1,22 +1,18 @@
 /**
  * Configuração centralizada de autenticação.
  *
- * E-mails autorizados podem ser configurados de 2 formas:
- * 1. Variável de ambiente NEXT_PUBLIC_ALLOWED_EMAILS (separados por vírgula)
- *    Use "*" para permitir qualquer email
- * 2. Array hardcoded ALLOWED_EMAILS_DEFAULT abaixo
+ * E-mails autorizados são configurados via variável de ambiente:
+ *   NEXT_PUBLIC_ALLOWED_EMAILS=email1@gmail.com,email2@gmail.com
  *
- * A variável de ambiente tem precedência.
+ * Use "*" para permitir qualquer email (não recomendado em produção).
  */
 
-// E-mails padrão autorizados (fallback caso não haja env var)
-// Use ["*"] para permitir qualquer email
-const ALLOWED_EMAILS_DEFAULT = ["*"];
+// Fallback hardcoded — substitua pelos e-mails reais ou use a env var
+const ALLOWED_EMAILS_DEFAULT: string[] = [];
 
 /**
  * Retorna a lista de e-mails autorizados.
  * Prioriza a variável de ambiente NEXT_PUBLIC_ALLOWED_EMAILS.
- * Se contém "*", permite qualquer email.
  */
 export function getAllowedEmails(): string[] {
   const envEmails = process.env.NEXT_PUBLIC_ALLOWED_EMAILS?.trim();

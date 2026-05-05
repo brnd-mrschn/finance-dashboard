@@ -5,6 +5,7 @@ import Lenis from "lenis";
 import "lenis/dist/lenis.css";
 import { Topbar } from "@/app/components/layout/topbar";
 import { useAuthGuard } from "@/lib/useAuthGuard";
+import { ProfileProvider } from "@/lib/profile-context";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const authState = useAuthGuard();
@@ -28,14 +29,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Redireciona para login se não autenticado (full reload, não client-side)
+  // Redireciona para login se não autenticado
   useEffect(() => {
     if (authState === "unauthenticated") {
       window.location.href = "/login";
     }
   }, [authState]);
 
-  // Enquanto verifica autenticação, mostra tela de carregamento
   if (authState === "loading" || authState === "unauthenticated") {
     return (
       <div
@@ -60,9 +60,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
-      <Topbar />
-      <main className="flex-1 p-6 w-full">{children}</main>
-    </div>
+    <ProfileProvider>
+      <div className="min-h-screen flex flex-col" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
+        <Topbar />
+        <main className="flex-1 p-6 w-full">{children}</main>
+      </div>
+    </ProfileProvider>
   );
 }
