@@ -315,22 +315,24 @@ export default function Dashboard() {
     expenseByOrigin.push({ name: "Sem origem", value: noOriginExpense });
   }
 
-  // Paleta padrão harmoniosa para gráficos (moderna, com bom contraste em dark mode)
+  // Paleta padrão harmoniosa (baseada na sua sugestão)
   const chartPalette = [
-    "#34D399", // emerald (positivo)
-    "#60A5FA", // blue
-    "#A78BFA", // violet
-    "#22D3EE", // cyan
-    "#F59E0B", // amber
-    "#F472B6", // pink
-    "#F97316", // orange
-    "#94A3B8", // slate
+    "#003d5c",
+    "#31497e",
+    "#674f95",
+    "#a14e9a",
+    "#d44c8d",
+    "#f9596f",
+    "#ff7a47",
+    "#ffa600",
   ];
   const originColors = chartPalette;
-  const incomeColor = "#34D399";
-  const expenseColor = "#F87171";
-  const balanceColor = "#60A5FA";
-  const expectedColor = "#A78BFA";
+
+  // Cores semânticas para séries principais
+  const incomeColor = "#ffa600";
+  const expenseColor = "#f9596f";
+  const balanceColor = "#31497e";
+  const expectedColor = "#a14e9a";
 
   const monthlyData = filteredTransactions.reduce<
     Record<string, { month: string; monthDate: Date; income: number; expense: number }>
