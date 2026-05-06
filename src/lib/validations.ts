@@ -105,6 +105,13 @@ export const createOriginSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100),
 });
 
+export const updateOriginSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório").max(100).optional(),
+  // Campos extras que podem vir no body mas serão ignorados
+  transactions: z.unknown().optional(),
+  createdAt: z.unknown().optional(),
+});
+
 // ── Helper ─────────────────────────────────────────────────────────────────────
 
 import type { ZodSchema } from "zod";

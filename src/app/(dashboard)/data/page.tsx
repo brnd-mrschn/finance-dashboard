@@ -50,7 +50,7 @@ type CategoryForm = {
   expected: string;
 };
 
-type ViewMode = "transactions" | "categories";
+type ViewMode = "transactions" | "categories" | "origins";
 type SortDirection = "asc" | "desc";
 type TransactionSortField = "description" | "date" | "amount" | "type" | "categoryId" | "originId";
 type CategorySortField = "name" | "group" | "subgroup" | "type" | "expected";
@@ -100,18 +100,21 @@ export default function DataPage() {
   const [error, setError] = useState("");
   const [editingTransaction, setEditingTransaction] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [editingField, setEditingField] = useState<string | null>(null); // novo: campo em edição
+  const [editingOrigin, setEditingOrigin] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<string | null>(null);
   const [, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimeout = useRef<NodeJS.Timeout | null>(null);
   const [newTransaction, setNewTransaction] = useState<TransactionForm | null>(null);
   const [newCategory, setNewCategory] = useState<CategoryForm | null>(null);
+  const [newOriginName, setNewOriginName] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("transactions");
   const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const [sortField, setSortField] = useState<TransactionSortField>("date");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const [catSortField, setCatSortField] = useState<CategorySortField>("name");
   const [catSortDir, setCatSortDir] = useState<SortDirection>("asc");
+  const [originSortDir, setOriginSortDir] = useState<SortDirection>("asc");
   const [importModal, setImportModal] = useState(false);
   const [importData, setImportData] = useState<ParsedTransaction[]>([]);
   const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
@@ -120,8 +123,15 @@ export default function DataPage() {
   const [importOriginId, setImportOriginId] = useState('');
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+  const [selectedOrigins, setSelectedOrigins] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const checkboxClassName = "h-4 w-4 cursor-pointer appearance-none rounded-[5px] border border-[color:color-mix(in_srgb,var(--border)_72%,transparent)] bg-[color:color-mix(in_srgb,var(--surface-alt)_48%,transparent)] opacity-75 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-200 hover:opacity-100 hover:border-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--primary)_35%,transparent)] checked:border-[var(--primary)] checked:bg-[var(--primary)] checked:opacity-100";
+
+  const showToast = (msg: string, duration = 1800) => {
+    setToast(msg);
+    if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    toastTimeout.current = setTimeout(() => setToast(null), duration);
+  };
 
   const updateNewTransaction = <K extends keyof TransactionForm>(field: K, value: TransactionForm[K]) => {
     setNewTransaction((current) => (current ? { ...current, [field]: value } : current));
@@ -171,6 +181,11 @@ export default function DataPage() {
     }
   });
 
+  const sortedOrigins = [...origins].sort((a, b) => {
+    const dir = originSortDir === 'asc' ? 1 : -1;
+    return dir * a.name.localeCompare(b.name);
+  });
+
   useEffect(() => {
     if (!activeProfile) return;
     pfetch("/api/transactions")
@@ -186,6 +201,8 @@ export default function DataPage() {
       .then((data: Origin[]) => setOrigins(data))
       .catch(() => setError("Erro ao carregar origens"));
   }, [activeProfile, pfetch]);
+
+  if (profileLoading) return null;
 
   return (
     <motion.div
@@ -205,6 +222,10 @@ export default function DataPage() {
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'categories' ? 'bg-[var(--surface-alt)] text-[var(--foreground)]' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-alt)]'}`}
             onClick={() => setView('categories')}
           >Categorias</button>
+          <button
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'origins' ? 'bg-[var(--surface-alt)] text-[var(--foreground)]' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-alt)]'}`}
+            onClick={() => setView('origins')}
+          >Origens</button>
         </div>
         {view === 'transactions' && (
           <div className="flex gap-2 items-center">
@@ -226,9 +247,7 @@ export default function DataPage() {
                       setTransactions((prev) => prev.filter((tr) => !selectedTransactions.has(tr.id)));
                       setSelectedTransactions(new Set());
                       setSaving(false);
-                      setToast(`${ids.length} transação(ões) removida(s)!`);
-                      if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                      toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                      showToast(`${ids.length} transação(ões) removida(s)!`);
                     },
                   });
                 }}
@@ -270,9 +289,7 @@ export default function DataPage() {
                       setCategories((prev) => prev.filter((cat) => !selectedCategories.has(cat.id)));
                       setSelectedCategories(new Set());
                       setSaving(false);
-                      setToast(`${ids.length} categoria(s) removida(s)!`);
-                      if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                      toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                      showToast(`${ids.length} categoria(s) removida(s)!`);
                     },
                   });
                 }}
@@ -285,6 +302,42 @@ export default function DataPage() {
               onClick={() => setNewCategory({ name: "", group: "", subgroup: "", type: "EXPENSE", expected: "" })}
             >
               <FiPlus className="text-sm" /> Nova Categoria
+            </button>
+          </div>
+        )}
+        {view === 'origins' && (
+          <div className="flex gap-2 items-center">
+            {selectedOrigins.size > 0 && (
+              <button
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#ed4245] text-white border border-[#ed4245] hover:bg-[#d63638] shadow-[0_0_0_0_rgba(237,66,69,0)] hover:shadow-[0_0_8px_0_rgba(237,66,69,0.25)]"
+                onClick={() => {
+                  setConfirmModal({
+                    message: `Tem certeza que deseja remover ${selectedOrigins.size} origem(ns)?`,
+                    onConfirm: async () => {
+                      setConfirmModal(null);
+                      setSaving(true);
+                      const ids = Array.from(selectedOrigins);
+                      await Promise.all(
+                        ids.map((id) =>
+                          pfetch(`/api/origins/${id}`, { method: 'DELETE' })
+                        )
+                      );
+                      setOrigins((prev) => prev.filter((o) => !selectedOrigins.has(o.id)));
+                      setSelectedOrigins(new Set());
+                      setSaving(false);
+                      showToast(`${ids.length} origem(ns) removida(s)!`);
+                    },
+                  });
+                }}
+              >
+                <FiTrash2 size={12} /> Excluir {selectedOrigins.size}
+              </button>
+            )}
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)]"
+              onClick={() => setNewOriginName("")}
+            >
+              <FiPlus className="text-sm" /> Nova Origem
             </button>
           </div>
         )}
@@ -384,24 +437,9 @@ export default function DataPage() {
                         <button
                           className="px-2.5 py-1 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)] mr-2"
                           onClick={async () => {
-                            if (!newTransaction.description.trim()) {
-                              setToast('Preencha a descrição');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
-                              return;
-                            }
-                            if (!newTransaction.date) {
-                              setToast('Preencha a data');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
-                              return;
-                            }
-                            if (!newTransaction.amount || parseFloat(newTransaction.amount) <= 0) {
-                              setToast('Preencha um valor maior que zero');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
-                              return;
-                            }
+                            if (!newTransaction.description.trim()) { showToast('Preencha a descrição'); return; }
+                            if (!newTransaction.date) { showToast('Preencha a data'); return; }
+                            if (!newTransaction.amount || parseFloat(newTransaction.amount) <= 0) { showToast('Preencha um valor maior que zero'); return; }
                             setSaving(true);
                             const res = await pfetch("/api/transactions", {
                               method: "POST",
@@ -411,20 +449,12 @@ export default function DataPage() {
                                 amount: parseFloat(newTransaction.amount),
                               }),
                             });
-                            if (!res.ok) {
-                              setSaving(false);
-                              setToast('Erro ao criar transação');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
-                              return;
-                            }
+                            if (!res.ok) { setSaving(false); showToast('Erro ao criar transação'); return; }
                             const created = await res.json();
                             setTransactions((prev) => [created, ...prev]);
                             setNewTransaction(null);
                             setSaving(false);
-                            setToast('Transação criada!');
-                            if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                            toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                            showToast('Transação criada!');
                           }}
                           title="Salvar"
                         >Salvar</button>
@@ -455,16 +485,10 @@ export default function DataPage() {
                                 body: JSON.stringify({ ...t, description: value }),
                               });
                               setTransactions((prev) => prev.map((tr) => tr.id === t.id ? { ...tr, description: value } : tr));
-                              setEditingTransaction(null);
-                              setEditingField(null);
-                              setSaving(false);
-                              setToast('Transação atualizada!');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              setEditingTransaction(null); setEditingField(null); setSaving(false);
+                              showToast('Transação atualizada!');
                             }}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                            }}
+                            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                           />
                         ) : (
                           <div onClick={() => { setEditingTransaction(t.id); setEditingField('description'); }} className="cursor-pointer hover:underline w-full min-h-[24px] flex items-center">{t.description}</div>
@@ -488,16 +512,10 @@ export default function DataPage() {
                                 body: JSON.stringify({ ...t, date: value }),
                               });
                               setTransactions((prev) => prev.map((tr) => tr.id === t.id ? { ...tr, date: value } : tr));
-                              setEditingTransaction(null);
-                              setEditingField(null);
-                              setSaving(false);
-                              setToast('Transação atualizada!');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              setEditingTransaction(null); setEditingField(null); setSaving(false);
+                              showToast('Transação atualizada!');
                             }}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                            }}
+                            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                           />
                         ) : (
                           <div onClick={() => { setEditingTransaction(t.id); setEditingField('date'); }} className="cursor-pointer hover:underline w-full min-h-[24px] flex items-center">{new Date(t.date.slice(0, 10) + "T00:00:00").toLocaleDateString("pt-BR")}</div>
@@ -521,16 +539,10 @@ export default function DataPage() {
                                 body: JSON.stringify({ ...t, amount: value }),
                               });
                               setTransactions((prev) => prev.map((tr) => tr.id === t.id ? { ...tr, amount: value } : tr));
-                              setEditingTransaction(null);
-                              setEditingField(null);
-                              setSaving(false);
-                              setToast('Transação atualizada!');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              setEditingTransaction(null); setEditingField(null); setSaving(false);
+                              showToast('Transação atualizada!');
                             }}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                            }}
+                            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                           />
                         ) : (
                           <div onClick={() => { setEditingTransaction(t.id); setEditingField('amount'); }} className="cursor-pointer hover:underline w-full min-h-[24px] flex items-center">{t.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
@@ -552,17 +564,11 @@ export default function DataPage() {
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...t, type: value }),
                               });
-                              setTransactions((prev) => prev.map((tr) => tr.id === t.id ? { ...tr, type: t.type as TransactionType || tr.type } : tr));
-                              setEditingTransaction(null);
-                              setEditingField(null);
-                              setSaving(false);
-                              setToast('Transação atualizada!');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              setTransactions((prev) => prev.map((tr) => tr.id === t.id ? { ...tr, type: value as TransactionType } : tr));
+                              setEditingTransaction(null); setEditingField(null); setSaving(false);
+                              showToast('Transação atualizada!');
                             }}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") (e.target as HTMLSelectElement).blur();
-                            }}
+                            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLSelectElement).blur(); }}
                           >
                             <option value="INCOME">Receita</option>
                             <option value="EXPENSE">Despesa</option>
@@ -588,16 +594,10 @@ export default function DataPage() {
                                 body: JSON.stringify({ ...t, categoryId: value })
                               });
                               setTransactions((prev) => prev.map((tr) => tr.id === t.id ? { ...tr, categoryId: value } : tr));
-                              setEditingTransaction(null);
-                              setEditingField(null);
-                              setSaving(false);
-                              setToast('Transação atualizada!');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              setEditingTransaction(null); setEditingField(null); setSaving(false);
+                              showToast('Transação atualizada!');
                             }}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") (e.target as HTMLSelectElement).blur();
-                            }}
+                            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLSelectElement).blur(); }}
                           >
                             <option value="">Sem categoria</option>
                             {categories.map((c) => (
@@ -613,11 +613,7 @@ export default function DataPage() {
                               return (
                                 <span
                                   className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                                  style={{
-                                    background: `${color}22`,
-                                    color,
-                                    border: `1px solid ${color}55`,
-                                  }}
+                                  style={{ background: `${color}22`, color, border: `1px solid ${color}55` }}
                                 >
                                   {cat.name}
                                 </span>
@@ -643,16 +639,10 @@ export default function DataPage() {
                                 body: JSON.stringify({ ...t, originId: value || null }),
                               });
                               setTransactions((prev) => prev.map((tr) => tr.id === t.id ? { ...tr, originId: value || null } : tr));
-                              setEditingTransaction(null);
-                              setEditingField(null);
-                              setSaving(false);
-                              setToast('Transação atualizada!');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              setEditingTransaction(null); setEditingField(null); setSaving(false);
+                              showToast('Transação atualizada!');
                             }}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") (e.target as HTMLSelectElement).blur();
-                            }}
+                            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLSelectElement).blur(); }}
                           >
                             <option value="">Sem origem</option>
                             {origins.map((o) => (
@@ -773,44 +763,21 @@ export default function DataPage() {
                         <button
                           className="px-2.5 py-1 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)] mr-2"
                           onClick={async () => {
-                            if (!newCategory.name.trim()) {
-                              setToast('Preencha o nome');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
-                              return;
-                            }
-                            if (!newCategory.group.trim()) {
-                              setToast('Preencha o grupo');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
-                              return;
-                            }
-                            if (!newCategory.subgroup.trim()) {
-                              setToast('Preencha o subgrupo');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
-                              return;
-                            }
+                            if (!newCategory.name.trim()) { showToast('Preencha o nome'); return; }
+                            if (!newCategory.group.trim()) { showToast('Preencha o grupo'); return; }
+                            if (!newCategory.subgroup.trim()) { showToast('Preencha o subgrupo'); return; }
                             setSaving(true);
                             const res = await pfetch("/api/categories", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify(newCategory),
                             });
-                            if (!res.ok) {
-                              setSaving(false);
-                              setToast('Erro ao criar categoria');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
-                              return;
-                            }
+                            if (!res.ok) { setSaving(false); showToast('Erro ao criar categoria'); return; }
                             const created = await res.json();
                             setCategories((prev) => [created, ...prev]);
                             setNewCategory(null);
                             setSaving(false);
-                            setToast('Categoria criada!');
-                            if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                            toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                            showToast('Categoria criada!');
                           }}
                           title="Salvar"
                         >Salvar</button>
@@ -840,16 +807,10 @@ export default function DataPage() {
                                 body: JSON.stringify({ ...c, name: value })
                               });
                               setCategories((prev) => prev.map((cat) => cat.id === c.id ? { ...cat, name: value } : cat));
-                              setEditingCategory(null);
-                              setEditingField(null);
-                              setSaving(false);
-                              setToast('Categoria atualizada!');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              setEditingCategory(null); setEditingField(null); setSaving(false);
+                              showToast('Categoria atualizada!');
                             }}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                            }}
+                            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                           />
                         ) : (
                           <span onClick={() => { setEditingCategory(c.id); setEditingField('name'); }} className="cursor-pointer hover:underline flex items-center gap-2">
@@ -874,16 +835,10 @@ export default function DataPage() {
                                 body: JSON.stringify({ ...c, group: value })
                               });
                               setCategories((prev) => prev.map((cat) => cat.id === c.id ? { ...cat, group: value } : cat));
-                              setEditingCategory(null);
-                              setEditingField(null);
-                              setSaving(false);
-                              setToast('Categoria atualizada!');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              setEditingCategory(null); setEditingField(null); setSaving(false);
+                              showToast('Categoria atualizada!');
                             }}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                            }}
+                            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                           />
                         ) : (
                           <span onClick={() => { setEditingCategory(c.id); setEditingField('group'); }} className="cursor-pointer hover:underline">{c.group}</span>
@@ -905,16 +860,10 @@ export default function DataPage() {
                                 body: JSON.stringify({ ...c, subgroup: value })
                               });
                               setCategories((prev) => prev.map((cat) => cat.id === c.id ? { ...cat, subgroup: value } : cat));
-                              setEditingCategory(null);
-                              setEditingField(null);
-                              setSaving(false);
-                              setToast('Categoria atualizada!');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              setEditingCategory(null); setEditingField(null); setSaving(false);
+                              showToast('Categoria atualizada!');
                             }}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                            }}
+                            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                           />
                         ) : (
                           <span onClick={() => { setEditingCategory(c.id); setEditingField('subgroup'); }} className="cursor-pointer hover:underline">{c.subgroup}</span>
@@ -935,17 +884,11 @@ export default function DataPage() {
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ ...c, type: value })
                               });
-                              setCategories((prev) => prev.map((cat) => cat.id === c.id ? {...cat, type: value === "INCOME" ? "INCOME" : "EXPENSE"} : cat))
-                              setEditingCategory(null);
-                              setEditingField(null);
-                              setSaving(false);
-                              setToast('Categoria atualizada!');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              setCategories((prev) => prev.map((cat) => cat.id === c.id ? {...cat, type: value === "INCOME" ? "INCOME" : "EXPENSE"} : cat));
+                              setEditingCategory(null); setEditingField(null); setSaving(false);
+                              showToast('Categoria atualizada!');
                             }}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") (e.target as HTMLSelectElement).blur();
-                            }}
+                            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLSelectElement).blur(); }}
                           >
                             <option value="EXPENSE">Despesa</option>
                             <option value="INCOME">Receita</option>
@@ -971,16 +914,10 @@ export default function DataPage() {
                                 body: JSON.stringify({ ...c, expected: value })
                               });
                               setCategories((prev) => prev.map((cat) => cat.id === c.id ? { ...cat, expected: value } : cat));
-                              setEditingCategory(null);
-                              setEditingField(null);
-                              setSaving(false);
-                              setToast('Categoria atualizada!');
-                              if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                              toastTimeout.current = setTimeout(() => setToast(null), 1800);
+                              setEditingCategory(null); setEditingField(null); setSaving(false);
+                              showToast('Categoria atualizada!');
                             }}
-                            onKeyDown={e => {
-                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                            }}
+                            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                           />
                         ) : (
                           <span onClick={() => { setEditingCategory(c.id); setEditingField('expected'); }} className="cursor-pointer hover:underline">
@@ -1003,6 +940,172 @@ export default function DataPage() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        {view === 'origins' && (
+          <div className="bg-[var(--surface)] rounded-lg border border-[var(--border)]">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm" style={{ tableLayout: "fixed" }}>
+                <thead>
+                  <tr className="border-y border-[var(--border)]">
+                    <th
+                      className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)] cursor-pointer select-none hover:text-[var(--foreground)] transition-colors"
+                      style={{ width: "70%" }}
+                      onClick={() => setOriginSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+                    >
+                      Nome
+                      <span className="inline-flex ml-1 opacity-60">
+                        {originSortDir === 'asc' ? <FiChevronUp size={12} /> : <FiChevronDown size={12} />}
+                      </span>
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]" style={{ width: "20%" }}>
+                      Transações
+                    </th>
+                    <th className="px-4 py-2.5 w-[10%] text-center">
+                      <input
+                        type="checkbox"
+                        className={checkboxClassName}
+                        checked={origins.length > 0 && selectedOrigins.size === origins.length}
+                        onChange={() => {
+                          if (selectedOrigins.size === origins.length) setSelectedOrigins(new Set());
+                          else setSelectedOrigins(new Set(origins.map((o) => o.id)));
+                        }}
+                        aria-label="Selecionar todas as origens"
+                      />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {newOriginName !== null && (
+                    <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
+                      <td className="px-3 py-1.5">
+                        <input
+                          className="edit-field"
+                          value={newOriginName}
+                          onChange={(e) => setNewOriginName(e.target.value)}
+                          placeholder="Nome da origem"
+                          autoFocus
+                          onKeyDown={async (e) => {
+                            if (e.key === "Enter") {
+                              const name = newOriginName.trim();
+                              if (!name) { showToast('Preencha o nome'); return; }
+                              setSaving(true);
+                              const res = await pfetch("/api/origins", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ name }),
+                              });
+                              if (!res.ok) { setSaving(false); showToast('Erro ao criar origem'); return; }
+                              const created = await res.json();
+                              setOrigins((prev) => [created, ...prev]);
+                              setNewOriginName(null);
+                              setSaving(false);
+                              showToast('Origem criada!');
+                            }
+                            if (e.key === "Escape") setNewOriginName(null);
+                          }}
+                        />
+                      </td>
+                      <td className="px-3 py-1.5 text-[var(--muted-foreground)] text-xs">—</td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          className="px-2.5 py-1 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)] mr-2"
+                          onClick={async () => {
+                            const name = newOriginName.trim();
+                            if (!name) { showToast('Preencha o nome'); return; }
+                            setSaving(true);
+                            const res = await pfetch("/api/origins", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ name }),
+                            });
+                            if (!res.ok) { setSaving(false); showToast('Erro ao criar origem'); return; }
+                            const created = await res.json();
+                            setOrigins((prev) => [created, ...prev]);
+                            setNewOriginName(null);
+                            setSaving(false);
+                            showToast('Origem criada!');
+                          }}
+                          title="Salvar"
+                        >Salvar</button>
+                        <button
+                          className="px-2.5 py-1 rounded-md text-xs font-medium transition-all bg-transparent text-[var(--muted-foreground)] border border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)] hover:bg-[var(--surface-alt)]"
+                          onClick={() => setNewOriginName(null)}
+                          title="Cancelar"
+                        >Cancelar</button>
+                      </td>
+                    </tr>
+                  )}
+                  {sortedOrigins.map((o) => {
+                    const txCount = transactions.filter((t) => t.originId === o.id).length;
+                    return (
+                      <tr key={o.id} style={{ height: 40 }} className={`border-b border-[var(--border)] transition-colors duration-200 ${selectedOrigins.has(o.id) ? 'bg-[var(--surface-alt)]' : editingOrigin === o.id ? 'bg-[var(--surface-alt)]' : 'hover:bg-[var(--surface-alt)]'}`}>
+                        <td className="px-3 py-1.5">
+                          {editingOrigin === o.id ? (
+                            <input
+                              className="edit-field"
+                              defaultValue={o.name}
+                              autoFocus
+                              onBlur={async (e) => {
+                                const value = e.target.value.trim();
+                                if (!value || value === o.name) { setEditingOrigin(null); return; }
+                                setSaving(true);
+                                await pfetch(`/api/origins/${o.id}`, {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ name: value }),
+                                });
+                                setOrigins((prev) => prev.map((orig) => orig.id === o.id ? { ...orig, name: value } : orig));
+                                setEditingOrigin(null);
+                                setSaving(false);
+                                showToast('Origem atualizada!');
+                              }}
+                              onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setEditingOrigin(null); }}
+                            />
+                          ) : (
+                            <span
+                              onClick={() => setEditingOrigin(o.id)}
+                              className="cursor-pointer hover:underline"
+                            >
+                              {o.name}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-1.5 text-[var(--muted-foreground)] text-xs">
+                          {txCount > 0 ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-[var(--surface-alt)] border border-[var(--border)]">
+                              {txCount} transaç{txCount === 1 ? 'ão' : 'ões'}
+                            </span>
+                          ) : (
+                            <span className="italic text-gray-400">Nenhuma</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <input
+                            type="checkbox"
+                            className={checkboxClassName}
+                            checked={selectedOrigins.has(o.id)}
+                            onChange={() => {
+                              const next = new Set(selectedOrigins);
+                              if (next.has(o.id)) next.delete(o.id); else next.add(o.id);
+                              setSelectedOrigins(next);
+                            }}
+                            aria-label={`Selecionar origem ${o.name}`}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {origins.length === 0 && newOriginName === null && (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)] italic">
+                        Nenhuma origem cadastrada. Clique em &ldquo;Nova Origem&rdquo; para adicionar.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1164,13 +1267,9 @@ export default function DataPage() {
                       const updated = await pfetch('/api/transactions').then(r => r.json());
                       setTransactions(updated);
                       setImportModal(false);
-                      setToast(`${result.imported} transações importadas!`);
-                      if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                      toastTimeout.current = setTimeout(() => setToast(null), 2500);
+                      showToast(`${result.imported} transações importadas!`, 2500);
                     } else {
-                      setToast(result.error || 'Erro ao importar');
-                      if (toastTimeout.current) clearTimeout(toastTimeout.current);
-                      toastTimeout.current = setTimeout(() => setToast(null), 2500);
+                      showToast(result.error || 'Erro ao importar', 2500);
                     }
                     setImporting(false);
                   }}
