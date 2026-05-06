@@ -13,6 +13,7 @@ type ProfileContextValue = {
   activeProfile: Profile | null;
   setActiveProfile: (profile: Profile) => void;
   loading: boolean;
+  profileError: string | null;
   reload: () => void;
 };
 
@@ -21,6 +22,7 @@ const ProfileContext = createContext<ProfileContextValue>({
   activeProfile: null,
   setActiveProfile: () => {},
   loading: true,
+  profileError: null,
   reload: () => {},
 });
 
@@ -30,12 +32,21 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [activeProfile, setActiveProfileState] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setProfileError(null);
     try {
       const res = await fetch("/api/profiles");
-      if (!res.ok) { setLoading(false); return; }
+      if (!res.ok) {
+        const errText = await res.text().catch(() => `HTTP ${res.status}`);
+        const msg = `[ProfileProvider] /api/profiles retornou ${res.status}: ${errText}`;
+        console.error(msg);
+        setProfileError(msg);
+        setLoading(false);
+        return;
+      }
       const data: Profile[] = await res.json();
       setProfiles(data);
 
@@ -47,8 +58,10 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       const saved = savedId ? data.find((p) => p.id === savedId) : null;
       const active = saved ?? data[0] ?? null;
       setActiveProfileState(active);
-    } catch {
-      // silencioso
+    } catch (err) {
+      const msg = `[ProfileProvider] Erro ao buscar perfis: ${String(err)}`;
+      console.error(msg);
+      setProfileError(msg);
     } finally {
       setLoading(false);
     }
@@ -64,7 +77,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ProfileContext.Provider value={{ profiles, activeProfile, setActiveProfile, loading, reload: load }}>
+    <ProfileContext.Provider value={{ profiles, activeProfile, setActiveProfile, loading, profileError, reload: load }}>
       {children}
     </ProfileContext.Provider>
   );

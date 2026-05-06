@@ -5,7 +5,7 @@ import Lenis from "lenis";
 import "lenis/dist/lenis.css";
 import { Topbar } from "@/app/components/layout/topbar";
 import { useAuthGuard } from "@/lib/useAuthGuard";
-import { ProfileProvider } from "@/lib/profile-context";
+import { ProfileProvider, useProfile } from "@/lib/profile-context";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const authState = useAuthGuard();
@@ -61,10 +61,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <ProfileProvider>
-      <div className="min-h-screen flex flex-col" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
-        <Topbar />
-        <main className="flex-1 p-6 w-full">{children}</main>
-      </div>
+      <DashboardInner>{children}</DashboardInner>
     </ProfileProvider>
+  );
+}
+
+function DashboardInner({ children }: { children: React.ReactNode }) {
+  const { profileError, activeProfile, loading } = useProfile();
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
+      <Topbar />
+      {profileError && (
+        <div className="px-6 py-2 bg-[#ed4245]/10 border-b border-[#ed4245]/30 text-xs text-[#ed4245] font-mono break-all">
+          ⚠️ Erro ao carregar perfil: {profileError}
+        </div>
+      )}
+      {!loading && !activeProfile && !profileError && (
+        <div className="px-6 py-2 bg-yellow-500/10 border-b border-yellow-500/30 text-xs text-yellow-600 font-mono">
+          ⚠️ Nenhum perfil ativo. Verifique /api/auth-debug para diagnóstico.
+        </div>
+      )}
+      <main className="flex-1 p-6 w-full">{children}</main>
+    </div>
   );
 }

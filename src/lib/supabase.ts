@@ -8,9 +8,12 @@ let browserClient: SupabaseClient | null = null;
 /**
  * Cliente Supabase browser-side usando @supabase/ssr.
  *
- * Diferença chave: a sessão é persistida em COOKIES (não localStorage).
- * Isso permite que o server-side (Route Handlers, middleware) leia a sessão
- * e elimina race conditions do PKCE flow client-side.
+ * Usa localStorage para persistir a sessão no browser (padrão do createBrowserClient).
+ * O server-side (Route Handlers, callback) usa cookies via createServerClient.
+ *
+ * Após o PKCE exchange no /auth/callback (server-side), o Supabase seta cookies
+ * de sessão na response. O browser client detecta a sessão via INITIAL_SESSION
+ * event e a persiste em localStorage para leituras subsequentes.
  */
 export function getSupabaseClient() {
   // .trim() remove \r\n de arquivos .env com line endings Windows
@@ -25,37 +28,10 @@ export function getSupabaseClient() {
   }
 
   if (!browserClient) {
-    browserClient = createBrowserClient(supabaseUrl, supabaseKey, {
-      cookies: {
-        getAll() {
-          if (typeof document === "undefined") return [];
-          return document.cookie.split(";").map((c) => {
-            const [name, ...v] = c.trim().split("=");
-            return { name, value: v.join("=") };
-          });
-        },
-        setAll(cookiesToSet) {
-          if (typeof document === "undefined") return;
-          cookiesToSet.forEach(({ name, value, options }) => {
-            let cookieString = `${name}=${value}`;
-            cookieString += `; path=${options.path ?? "/"}`;
-            if (options.maxAge !== undefined) {
-              cookieString += `; max-age=${options.maxAge}`;
-            }
-            if (options.domain) {
-              cookieString += `; domain=${options.domain}`;
-            }
-            if (options.sameSite) {
-              cookieString += `; samesite=${options.sameSite}`;
-            }
-            if (options.secure) {
-              cookieString += "; secure";
-            }
-            document.cookie = cookieString;
-          });
-        },
-      },
-    });
+    // Sem custom cookie adapter — usa localStorage (padrão do createBrowserClient).
+    // O server-side lê os cookies HttpOnly setados pelo callback.
+    // O client-side lê o localStorage setado pelo SDK após o INITIAL_SESSION event.
+    browserClient = createBrowserClient(supabaseUrl, supabaseKey);
   }
 
   return browserClient;

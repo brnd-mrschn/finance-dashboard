@@ -21,15 +21,14 @@ export default function LoginPage() {
     }
   }, []);
 
-  // Se já está logado, redireciona para o dashboard
+  // Se já está logado (verifica via API server-side — lê cookies HttpOnly corretamente)
   useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
+    fetch("/api/auth-check").then((res) => {
+      if (res.ok) {
         window.location.href = "/";
       }
-    });
-  }, [supabase]);
+    }).catch(() => {/* não logado */});
+  }, []);
 
   const handleGoogleLogin = async () => {
     if (!supabase) return;

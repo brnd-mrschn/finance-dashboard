@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { ThemeToggle } from "@/app/components/ui/theme-toggle";
 import { useProfile } from "@/lib/profile-context";
-import { FiChevronDown, FiPlus, FiUser } from "react-icons/fi";
+import { FiChevronDown, FiPlus, FiUser, FiLogOut } from "react-icons/fi";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -33,6 +33,15 @@ export function Topbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/auth-signout", { method: "POST" });
+    } catch {
+      // ignora erros de rede
+    }
+    window.location.href = "/login";
+  };
 
   const handleCreateProfile = async () => {
     const name = newName.trim();
@@ -174,6 +183,16 @@ export function Topbar() {
         )}
 
         <ThemeToggle />
+
+        {/* Botão de sair */}
+        <button
+          type="button"
+          title="Sair"
+          onClick={handleSignOut}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm text-[var(--muted-foreground)] hover:text-[#ed4245] hover:bg-[var(--surface-alt)] transition-colors"
+        >
+          <FiLogOut size={15} />
+        </button>
       </div>
     </motion.nav>
   );

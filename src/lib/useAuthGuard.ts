@@ -9,12 +9,12 @@ type AuthState = "loading" | "authenticated" | "unauthenticated";
 /**
  * Hook de proteção de rota client-side.
  *
- * Com a mudança para @supabase/ssr + Route Handler server-side,
- * o PKCE code exchange acontece no servidor (/auth/callback Route Handler).
- * Este hook apenas verifica se há sessão ativa nos cookies.
+ * Verifica autenticação de duas formas:
+ * 1. Via API server-side (/api/auth-check) — lê cookies HttpOnly corretamente
+ * 2. Via Supabase client-side como fallback (para eventos de sign-out)
  *
  * Fluxo: login → Google → /auth/callback (server) → / (com cookies de sessão)
- * Aqui: lê a sessão dos cookies → authenticated ou unauthenticated.
+ * Aqui: chama /api/auth-check → authenticated ou unauthenticated.
  */
 export function useAuthGuard() {
   const [authState, setAuthState] = useState<AuthState>("loading");
@@ -28,22 +28,15 @@ export function useAuthGuard() {
       return;
     }
 
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      authStateRef.current = "unauthenticated";
-      setAuthState("unauthenticated");
-      return;
-    }
-
     let cancelled = false;
 
     const checkAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-
+        // Verifica autenticação via API server-side (lê cookies HttpOnly)
+        const res = await fetch("/api/auth-check");
         if (cancelled) return;
 
-        if (session?.user?.email && isEmailAllowed(session.user.email)) {
+        if (res.ok) {
           authStateRef.current = "authenticated";
           setAuthState("authenticated");
         } else {
@@ -61,31 +54,27 @@ export function useAuthGuard() {
 
     checkAuth();
 
-    // Escuta mudanças de auth (ex: sign out)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+    // Escuta mudanças de auth via Supabase client (ex: sign out)
+    const supabase = getSupabaseClient();
+    let subscription: { unsubscribe: () => void } | null = null;
+
+    if (supabase) {
+      const { data } = supabase.auth.onAuthStateChange((event) => {
         if (cancelled) return;
+        console.log("[useAuthGuard] Auth event:", event);
 
-        console.log("[useAuthGuard] Auth event:", event, session?.user?.email);
-
-        if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user?.email) {
-          if (isEmailAllowed(session.user.email)) {
-            authStateRef.current = "authenticated";
-            setAuthState("authenticated");
-          } else {
-            supabase.auth.signOut();
-            authStateRef.current = "unauthenticated";
-            setAuthState("unauthenticated");
-          }
-        } else if (event === "SIGNED_OUT") {
+        if (event === "SIGNED_OUT") {
           authStateRef.current = "unauthenticated";
           setAuthState("unauthenticated");
+        } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+          // Re-verifica via API para garantir que o email está na whitelist
+          checkAuth();
         }
-      }
-    );
+      });
+      subscription = data.subscription;
+    }
 
-    // Timeout de segurança — se após 15s ainda está loading sem sessão,
-    // redireciona para login.
+    // Timeout de segurança — se após 15s ainda está loading, redireciona para login
     const timeout = setTimeout(() => {
       if (!cancelled && authStateRef.current === "loading") {
         console.log("[useAuthGuard] Timeout — redirecting to login");
@@ -96,7 +85,7 @@ export function useAuthGuard() {
 
     return () => {
       cancelled = true;
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
       clearTimeout(timeout);
     };
   }, []);
