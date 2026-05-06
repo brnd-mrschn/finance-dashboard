@@ -165,6 +165,8 @@ export function Topbar() {
         </div>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
+
           {/* Seletor de perfil */}
           {!loading && (
             <div className="relative" ref={dropdownRef}>
@@ -235,10 +237,9 @@ export function Topbar() {
                           <>
                             <button
                               type="button"
-                              className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                              className="flex items-center flex-1 min-w-0 text-left"
                               onClick={() => { setActiveProfile(profile); setDropdownOpen(false); }}
                             >
-                              <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${activeProfile?.id === profile.id ? "bg-[#43b581]" : "bg-[var(--muted-foreground)]"}`} />
                               <span className="truncate">{profile.name}</span>
                             </button>
                             {/* Ações: editar e excluir — visíveis no hover */}
@@ -308,8 +309,6 @@ export function Topbar() {
               </AnimatePresence>
             </div>
           )}
-
-          <ThemeToggle />
 
           {/* Botão de sair */}
           <button

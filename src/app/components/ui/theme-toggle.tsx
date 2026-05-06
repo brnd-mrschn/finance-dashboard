@@ -22,7 +22,7 @@ export function ThemeToggle() {
     <button
       aria-label="Alternar tema"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="hover:scale-110 transition-transform ml-4 p-1"
+      className="hover:scale-110 transition-transform p-1 opacity-75 hover:opacity-100"
     >
       <AnimatePresence mode="wait" initial={false}>
         {theme === "dark" ? (
