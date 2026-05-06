@@ -315,8 +315,22 @@ export default function Dashboard() {
     expenseByOrigin.push({ name: "Sem origem", value: noOriginExpense });
   }
 
-  const chartPalette = ["#43b581", "#ed4245", "#3b82f6", "#8b5cf6", "#f59e0b", "#14b8a6", "#ec4899"];
+  // Paleta padrão harmoniosa para gráficos (moderna, com bom contraste em dark mode)
+  const chartPalette = [
+    "#34D399", // emerald (positivo)
+    "#60A5FA", // blue
+    "#A78BFA", // violet
+    "#22D3EE", // cyan
+    "#F59E0B", // amber
+    "#F472B6", // pink
+    "#F97316", // orange
+    "#94A3B8", // slate
+  ];
   const originColors = chartPalette;
+  const incomeColor = "#34D399";
+  const expenseColor = "#F87171";
+  const balanceColor = "#60A5FA";
+  const expectedColor = "#A78BFA";
 
   const monthlyData = filteredTransactions.reduce<
     Record<string, { month: string; monthDate: Date; income: number; expense: number }>
@@ -725,7 +739,7 @@ export default function Dashboard() {
                                 name: "Esperado",
                                 value: expected,
                                 strokeHeight: 5,
-                                strokeColor: "#775DD0",
+                                strokeColor: expectedColor,
                               },
                             ]
                           : [],
@@ -742,7 +756,7 @@ export default function Dashboard() {
                     borderRadius: 6,
                   },
                 },
-                colors: ["#3ecf8e"],
+                colors: [incomeColor],
                 dataLabels: { enabled: false },
                 xaxis: {
                   labels: {
@@ -765,7 +779,7 @@ export default function Dashboard() {
                   show: true,
                   showForSingleSeries: true,
                   customLegendItems: ["Real", "Esperado"],
-                  markers: { fillColors: ["#3ecf8e", "#775DD0"] },
+                  markers: { fillColors: [incomeColor, expectedColor] },
                   labels: { colors: "var(--foreground)" },
                 },
                 grid: { borderColor: "#2e2e2e", strokeDashArray: 4 },
@@ -812,7 +826,7 @@ export default function Dashboard() {
                 theme: { mode: "dark" },
                 stroke: { width: [1, 1, 3], curve: "smooth" },
                 plotOptions: { bar: { borderRadius: 6, columnWidth: "40%" } },
-                colors: ["#3ecf8e", "#ed4245", "#3b82f6"],
+                colors: [incomeColor, expenseColor, balanceColor],
                 dataLabels: { enabled: false },
                 xaxis: {
                   categories: barData.map((item) => item.month),
@@ -857,9 +871,9 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center justify-center gap-5 mt-1">
             {[
-              { label: "Receitas", color: "#3ecf8e" },
-              { label: "Despesas", color: "#ed4245" },
-              { label: "Saldo", color: "#3b82f6" },
+              { label: "Receitas", color: incomeColor },
+              { label: "Despesas", color: expenseColor },
+              { label: "Saldo", color: balanceColor },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-1.5">
                 <span className="inline-block w-3 h-3 rounded-full" style={{ background: item.color }} />
