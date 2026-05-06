@@ -161,3 +161,20 @@ html.light ::-webkit-scrollbar-thumb {
   pointer-events: none;
   z-index: 1;
 }
+
+/* ── Skeleton shimmer ──────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--surface-alt) 25%,
+    var(--border) 50%,
+    var(--surface-alt) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}

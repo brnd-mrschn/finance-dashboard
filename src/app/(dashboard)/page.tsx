@@ -10,6 +10,7 @@ const ApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 import { Card } from "@/app/components/ui/card";
 import { DropdownFilter } from "@/app/components/ui/dropdown-filter";
 import { useProfile } from "@/lib/profile-context";
+import { DashboardSkeleton } from "@/app/components/ui/skeleton";
 
 const SPOTLIGHT_RADIUS = 250;
 
@@ -361,6 +362,10 @@ export default function Dashboard() {
   const barData = Object.values(monthlyData).sort(
     (a, b) => a.monthDate.getTime() - b.monthDate.getTime()
   );
+
+  if (profileLoading || !activeProfile) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <motion.div

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useProfile } from "@/lib/profile-context";
+import { FinanceSkeleton } from "@/app/components/ui/skeleton";
 // ApexCharts precisa ser importado dinamicamente para evitar SSR issues
 const ApexAreaChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -59,8 +60,8 @@ export default function Finance() {
     balanceData.push([ts, balance]);
   });
 
-  if (profileLoading) {
-    return <div className="flex items-center justify-center min-h-[200px] text-[var(--muted-foreground)] text-sm">Carregando perfil...</div>;
+  if (profileLoading || !activeProfile) {
+    return <FinanceSkeleton />;
   }
 
   return (

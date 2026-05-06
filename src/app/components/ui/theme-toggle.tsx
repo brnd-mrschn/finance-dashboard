@@ -22,15 +22,15 @@ export function ThemeToggle() {
     <button
       aria-label="Alternar tema"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="hover:scale-110 transition-transform p-1 opacity-75 hover:opacity-100"
+      className="hover:scale-110 transition-transform p-1 mr-3 opacity-50 hover:opacity-80"
     >
       <AnimatePresence mode="wait" initial={false}>
         {theme === "dark" ? (
           <motion.svg
             key="moon"
             xmlns="http://www.w3.org/2000/svg"
-            width="24" height="24" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
             initial={{ rotate: -90, opacity: 0 }}
             animate={{ rotate: 0, opacity: 1 }}
             exit={{ rotate: 90, opacity: 0 }}
@@ -42,8 +42,8 @@ export function ThemeToggle() {
           <motion.svg
             key="sun"
             xmlns="http://www.w3.org/2000/svg"
-            width="24" height="24" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
             initial={{ rotate: 90, opacity: 0 }}
             animate={{ rotate: 0, opacity: 1 }}
             exit={{ rotate: -90, opacity: 0 }}

@@ -5,6 +5,7 @@ import { FiTrash2, FiPlus, FiChevronUp, FiChevronDown, FiUpload } from "react-ic
 import { parseFile, type ParsedTransaction } from "@/lib/import-parser";
 import { motion, AnimatePresence } from "framer-motion";
 import { useProfile } from "@/lib/profile-context";
+import { DataSkeleton } from "@/app/components/ui/skeleton";
 
 type TransactionType = "INCOME" | "EXPENSE";
 
@@ -202,7 +203,7 @@ export default function DataPage() {
       .catch(() => setError("Erro ao carregar origens"));
   }, [activeProfile, pfetch]);
 
-  if (profileLoading) return null;
+  if (profileLoading || !activeProfile) return <DataSkeleton />;
 
   return (
     <motion.div
