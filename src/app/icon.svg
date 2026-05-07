@@ -1,0 +1,10 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#euro_favicon)"/>
+  <text x="16" y="22.5" text-anchor="middle" fill="#fff" font-size="18" font-weight="bold" font-family="sans-serif">€</text>
+  <defs>
+    <linearGradient id="euro_favicon" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3ecf8e"/>
+      <stop offset="1" stop-color="#2ba86c"/>
+    </linearGradient>
+  </defs>
+</svg>
