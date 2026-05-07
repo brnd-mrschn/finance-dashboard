@@ -50,14 +50,13 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       const data: Profile[] = await res.json();
       setProfiles(data);
 
-      // Restaura o perfil ativo do localStorage
+      // Restaura o perfil ativo do localStorage (não auto-seleciona o primeiro)
       const savedId = typeof window !== "undefined"
         ? localStorage.getItem(STORAGE_KEY)
         : null;
 
       const saved = savedId ? data.find((p) => p.id === savedId) : null;
-      const active = saved ?? data[0] ?? null;
-      setActiveProfileState(active);
+      setActiveProfileState(saved ?? null);
     } catch (err) {
       const msg = `[ProfileProvider] Erro ao buscar perfis: ${String(err)}`;
       console.error(msg);
