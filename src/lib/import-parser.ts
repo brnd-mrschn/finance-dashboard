@@ -1,5 +1,31 @@
 // Parser para arquivos CSV e OFX de bancos brasileiros
 
+/**
+ * Lê um File como texto, detectando automaticamente o encoding.
+ * Tenta UTF-8 primeiro; se encontrar caracteres de substituição (U+FFFD),
+ * re-decodifica como Windows-1252 (comum em CSVs do Excel no Windows).
+ */
+export function readFileAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const buffer = reader.result as ArrayBuffer;
+      // Tenta UTF-8 primeiro
+      const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
+      // Se não tem caracteres de substituição, UTF-8 está correto
+      if (!utf8.includes("\uFFFD")) {
+        resolve(utf8);
+        return;
+      }
+      // Fallback: Windows-1252 (comum em CSVs do Excel no Windows)
+      const win1252 = new TextDecoder("windows-1252", { fatal: false }).decode(buffer);
+      resolve(win1252);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 export interface ParsedTransaction {
   date: string; // YYYY-MM-DD
   description: string;

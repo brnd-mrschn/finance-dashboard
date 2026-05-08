@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { FiTrash2, FiPlus, FiChevronUp, FiChevronDown, FiUpload } from "react-icons/fi";
-import { parseFile, parseCategoryCSV, type ParsedTransaction, type ParsedCategory } from "@/lib/import-parser";
+import { parseFile, parseCategoryCSV, readFileAsText, type ParsedTransaction, type ParsedCategory } from "@/lib/import-parser";
 import { motion, AnimatePresence } from "framer-motion";
 import { useProfile } from "@/lib/profile-context";
 import { DataSkeleton } from "@/app/components/ui/skeleton";
@@ -1161,14 +1161,11 @@ export default function DataPage() {
                     const file = e.target.files?.[0];
                     if (!file) return;
                     setImportFileName(file.name);
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      const content = ev.target?.result as string;
+                    readFileAsText(file).then((content) => {
                       const parsed = parseFile(content, file.name);
                       setImportData(parsed);
                       setImportSelected(new Set(parsed.map((_, i) => i)));
-                    };
-                    reader.readAsText(file, 'utf-8');
+                    });
                     e.target.value = '';
                   }}
                 />
@@ -1323,14 +1320,11 @@ export default function DataPage() {
                     const file = e.target.files?.[0];
                     if (!file) return;
                     setCatImportFileName(file.name);
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      const content = ev.target?.result as string;
+                    readFileAsText(file).then((content) => {
                       const parsed = parseCategoryCSV(content);
                       setCatImportData(parsed);
                       setCatImportSelected(new Set(parsed.map((_, i) => i)));
-                    };
-                    reader.readAsText(file, 'utf-8');
+                    });
                     e.target.value = '';
                   }}
                 />
