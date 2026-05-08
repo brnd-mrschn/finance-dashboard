@@ -176,3 +176,80 @@ export function parseFile(content: string, filename: string): ParsedTransaction[
   if (ext === "ofx" || ext === "qfx") return parseOFX(content);
   return parseCSV(content);
 }
+
+// ── Categorias CSV ─────────────────────────────────────────────────────────
+
+export interface ParsedCategory {
+  name: string;
+  group: string;
+  subgroup: string;
+  type: "INCOME" | "EXPENSE";
+}
+
+interface CategoryColumnMap {
+  name: number;
+  group: number;
+  subgroup: number;
+  type: number;
+}
+
+function detectCategoryColumns(headers: string[]): CategoryColumnMap | null {
+  const lower = headers.map((h) => h.toLowerCase().trim().replace(/['"]/g, ""));
+
+  const nameIdx = lower.findIndex((h) =>
+    /^(nome|name|categoria|category|cat|descri[çc][aã]o|description)$/.test(h)
+  );
+  const groupIdx = lower.findIndex((h) =>
+    /^(grupo|group|grup|grp|g)$/.test(h)
+  );
+  const subgroupIdx = lower.findIndex((h) =>
+    /^(subgrupo|subgroup|subgrup|subgrp|subgrupo|sub|sg)$/.test(h)
+  );
+  const typeIdx = lower.findIndex((h) =>
+    /^(tipo|type|tp|t|natureza)$/.test(h)
+  );
+
+  if (nameIdx === -1 || groupIdx === -1 || subgroupIdx === -1 || typeIdx === -1) return null;
+  return { name: nameIdx, group: groupIdx, subgroup: subgroupIdx, type: typeIdx };
+}
+
+function normalizeCategoryType(raw: string): "INCOME" | "EXPENSE" | null {
+  const t = raw.trim().toLowerCase().replace(/['"]/g, "");
+  if (/^(receita|entrada|income|in|crédito|credito|r|1)$/.test(t)) return "INCOME";
+  if (/^(despesa|saída|saida|expense|out|débito|debito|d|2|e)$/.test(t)) return "EXPENSE";
+  return null;
+}
+
+export function parseCategoryCSV(content: string): ParsedCategory[] {
+  const lines = content
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .filter((l) => l.trim());
+
+  if (lines.length < 2) return [];
+
+  const delimiter = detectDelimiter(lines[0]);
+  const headers = lines[0].split(delimiter);
+  const colMap = detectCategoryColumns(headers);
+
+  if (!colMap) return [];
+
+  const categories: ParsedCategory[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(delimiter);
+    if (cols.length <= Math.max(colMap.name, colMap.group, colMap.subgroup, colMap.type)) continue;
+
+    const name = cols[colMap.name].trim().replace(/^["']|["']$/g, "");
+    const group = cols[colMap.group].trim().replace(/^["']|["']$/g, "");
+    const subgroup = cols[colMap.subgroup].trim().replace(/^["']|["']$/g, "");
+    const type = normalizeCategoryType(cols[colMap.type]);
+
+    if (!name || !group || !subgroup || !type) continue;
+
+    categories.push({ name, group, subgroup, type });
+  }
+
+  return categories;
+}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { FiTrash2, FiPlus, FiChevronUp, FiChevronDown, FiUpload } from "react-icons/fi";
-import { parseFile, type ParsedTransaction } from "@/lib/import-parser";
+import { parseFile, parseCategoryCSV, type ParsedTransaction, type ParsedCategory } from "@/lib/import-parser";
 import { motion, AnimatePresence } from "framer-motion";
 import { useProfile } from "@/lib/profile-context";
 import { DataSkeleton } from "@/app/components/ui/skeleton";
@@ -122,10 +122,16 @@ export default function DataPage() {
   const [importing, setImporting] = useState(false);
   const [importFileName, setImportFileName] = useState('');
   const [importOriginId, setImportOriginId] = useState('');
+  const [catImportModal, setCatImportModal] = useState(false);
+  const [catImportData, setCatImportData] = useState<ParsedCategory[]>([]);
+  const [catImportSelected, setCatImportSelected] = useState<Set<number>>(new Set());
+  const [catImporting, setCatImporting] = useState(false);
+  const [catImportFileName, setCatImportFileName] = useState('');
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [selectedOrigins, setSelectedOrigins] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const catFileInputRef = useRef<HTMLInputElement>(null);
   const checkboxClassName = "h-4 w-4 cursor-pointer appearance-none rounded-[5px] border border-[color:color-mix(in_srgb,var(--border)_72%,transparent)] bg-[color:color-mix(in_srgb,var(--surface-alt)_48%,transparent)] opacity-75 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-200 hover:opacity-100 hover:border-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--primary)_35%,transparent)] checked:border-[var(--primary)] checked:bg-[var(--primary)] checked:opacity-100";
 
   const showToast = (msg: string, duration = 1800) => {
@@ -298,6 +304,12 @@ export default function DataPage() {
                 <FiTrash2 size={12} /> Excluir {selectedCategories.size}
               </button>
             )}
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-transparent text-[var(--muted-foreground)] border border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)] hover:bg-[var(--surface-alt)]"
+              onClick={() => { setCatImportModal(true); setCatImportData([]); setCatImportSelected(new Set()); setCatImportFileName(''); }}
+            >
+              <FiUpload className="text-sm" /> Importar
+            </button>
             <button
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)]"
               onClick={() => setNewCategory({ name: "", group: "", subgroup: "", type: "EXPENSE", expected: "" })}
@@ -1276,6 +1288,156 @@ export default function DataPage() {
                   }}
                 >
                   {importing ? 'Importando...' : `Importar ${importSelected.size} transações`}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {catImportModal && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => { if (!catImporting) setCatImportModal(false); }}
+          >
+            <motion.div
+              className="bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-5 border-b border-[var(--border)]">
+                <h3 className="text-sm font-medium text-[var(--foreground)] mb-3">Importar Categorias</h3>
+                <p className="text-xs text-[var(--muted-foreground)] mb-3">Selecione um arquivo CSV com as colunas: Nome, GRUPO, SUBGRUPO, TIPO.</p>
+                <input
+                  ref={catFileInputRef}
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setCatImportFileName(file.name);
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      const content = ev.target?.result as string;
+                      const parsed = parseCategoryCSV(content);
+                      setCatImportData(parsed);
+                      setCatImportSelected(new Set(parsed.map((_, i) => i)));
+                    };
+                    reader.readAsText(file, 'utf-8');
+                    e.target.value = '';
+                  }}
+                />
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[var(--surface-alt)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--muted-foreground)]"
+                  onClick={() => catFileInputRef.current?.click()}
+                >
+                  <FiUpload size={12} /> {catImportFileName || 'Selecionar arquivo'}
+                </button>
+              </div>
+              {catImportData.length > 0 && (
+                <>
+                  <div className="px-5 py-2 border-b border-[var(--border)] flex items-center justify-between">
+                    <span className="text-xs text-[var(--muted-foreground)]">
+                      {catImportSelected.size} de {catImportData.length} selecionadas
+                    </span>
+                    <button
+                      className="text-xs text-[var(--primary)] hover:underline"
+                      onClick={() => {
+                        if (catImportSelected.size === catImportData.length) setCatImportSelected(new Set());
+                        else setCatImportSelected(new Set(catImportData.map((_, i) => i)));
+                      }}
+                    >{catImportSelected.size === catImportData.length ? 'Desmarcar todas' : 'Selecionar todas'}</button>
+                  </div>
+                  <div className="overflow-y-auto flex-1 min-h-0">
+                    <table className="min-w-full text-xs">
+                      <thead className="sticky top-0 bg-[var(--surface)] z-10">
+                        <tr className="border-b border-[var(--border)]">
+                          <th className="px-4 py-2 w-10"></th>
+                          <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Nome</th>
+                          <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Grupo</th>
+                          <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Subgrupo</th>
+                          <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]">Tipo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {catImportData.map((c, i) => (
+                          <tr
+                            key={i}
+                            className={`border-b border-[var(--border)] cursor-pointer transition-colors ${catImportSelected.has(i) ? 'bg-[var(--surface)]' : 'bg-[var(--surface)] opacity-40'}`}
+                            onClick={() => {
+                              const next = new Set(catImportSelected);
+                              if (next.has(i)) next.delete(i); else next.add(i);
+                              setCatImportSelected(next);
+                            }}
+                          >
+                            <td className="px-4 py-1.5 text-center">
+                              <input
+                                type="checkbox"
+                                checked={catImportSelected.has(i)}
+                                readOnly
+                                className="accent-[#3ecf8e] pointer-events-none"
+                              />
+                            </td>
+                            <td className="px-4 py-1.5 text-[var(--foreground)] truncate max-w-[180px]">{c.name}</td>
+                            <td className="px-4 py-1.5 text-[var(--foreground)] truncate max-w-[140px]">{c.group}</td>
+                            <td className="px-4 py-1.5 text-[var(--foreground)] truncate max-w-[140px]">{c.subgroup}</td>
+                            <td className="px-4 py-1.5">
+                              <span className={`text-[10px] font-medium uppercase ${c.type === 'INCOME' ? 'text-[#43b581]' : 'text-[#ed4245]'}`}>
+                                {c.type === 'INCOME' ? 'Entrada' : 'Saída'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+              {catImportData.length === 0 && catImportFileName && (
+                <div className="p-5">
+                  <p className="text-xs text-[#ed4245]">Nenhuma categoria encontrada no arquivo. Verifique se o CSV tem as colunas Nome, GRUPO, SUBGRUPO e TIPO.</p>
+                </div>
+              )}
+              <div className="p-4 border-t border-[var(--border)] flex justify-end gap-2">
+                <button
+                  className="px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-transparent text-[var(--muted-foreground)] border border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)] hover:bg-[var(--surface-alt)]"
+                  onClick={() => setCatImportModal(false)}
+                  disabled={catImporting}
+                >Cancelar</button>
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[#30a46c] text-white border border-[#3ecf8e] hover:bg-[#2b9260] shadow-[0_0_0_0_rgba(62,207,142,0)] hover:shadow-[0_0_8px_0_rgba(62,207,142,0.25)] disabled:opacity-50"
+                  disabled={catImporting || catImportSelected.size === 0}
+                  onClick={async () => {
+                    setCatImporting(true);
+                    const selected = catImportData.filter((_, i) => catImportSelected.has(i));
+                    const res = await pfetch('/api/categories/import', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ categories: selected }),
+                    });
+                    const result = await res.json();
+                    if (res.ok) {
+                      const updated = await pfetch('/api/categories').then(r => r.json());
+                      setCategories(updated);
+                      setCatImportModal(false);
+                      const msg = result.skipped > 0
+                        ? `${result.imported} categorias importadas (${result.skipped} duplicadas ignoradas)!`
+                        : `${result.imported} categorias importadas!`;
+                      showToast(msg, 2500);
+                    } else {
+                      showToast(result.error || 'Erro ao importar', 2500);
+                    }
+                    setCatImporting(false);
+                  }}
+                >
+                  {catImporting ? 'Importando...' : `Importar ${catImportSelected.size} categorias`}
                 </button>
               </div>
             </motion.div>

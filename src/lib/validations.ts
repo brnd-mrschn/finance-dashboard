@@ -62,6 +62,20 @@ export const importTransactionsSchema = z.object({
 
 // ── Categories ─────────────────────────────────────────────────────────────────
 
+export const importCategoryItemSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório").max(100),
+  group: z.string().min(1, "Grupo é obrigatório").max(100),
+  subgroup: z.string().min(1, "Subgrupo é obrigatório").max(100),
+  type: transactionType,
+});
+
+export const importCategoriesSchema = z.object({
+  categories: z
+    .array(importCategoryItemSchema)
+    .min(1, "Pelo menos uma categoria é obrigatória")
+    .max(5000, "Máximo de 5000 categorias por importação"),
+});
+
 export const createCategorySchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100),
   group: z.string().min(1, "Grupo é obrigatório").max(100),
