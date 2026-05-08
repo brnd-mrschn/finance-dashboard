@@ -1313,7 +1313,7 @@ export default function DataPage() {
             >
               <div className="p-5 border-b border-[var(--border)]">
                 <h3 className="text-sm font-medium text-[var(--foreground)] mb-3">Importar Categorias</h3>
-                <p className="text-xs text-[var(--muted-foreground)] mb-3">Selecione um arquivo CSV com as colunas: Nome, GRUPO, SUBGRUPO, TIPO.</p>
+                <p className="text-xs text-[var(--muted-foreground)] mb-3">Selecione um arquivo CSV com as colunas: NOME, GRUPO, SUBGRUPO, TIPO.</p>
                 <input
                   ref={catFileInputRef}
                   type="file"
@@ -1402,7 +1402,7 @@ export default function DataPage() {
               )}
               {catImportData.length === 0 && catImportFileName && (
                 <div className="p-5">
-                  <p className="text-xs text-[#ed4245]">Nenhuma categoria encontrada no arquivo. Verifique se o CSV tem as colunas Nome, GRUPO, SUBGRUPO e TIPO.</p>
+                  <p className="text-xs text-[#ed4245]">Nenhuma categoria encontrada no arquivo. Verifique se o CSV tem as colunas NOME, GRUPO, SUBGRUPO e TIPO.</p>
                 </div>
               )}
               <div className="p-4 border-t border-[var(--border)] flex justify-end gap-2">
