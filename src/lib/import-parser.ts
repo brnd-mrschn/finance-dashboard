@@ -194,19 +194,26 @@ interface CategoryColumnMap {
 }
 
 function detectCategoryColumns(headers: string[]): CategoryColumnMap | null {
-  const lower = headers.map((h) => h.toLowerCase().trim().replace(/['"]/g, ""));
+  const lower = headers.map((h) =>
+    h.toLowerCase().trim().replace(/['"]/g, "").replace(/^\ufeff/, "")
+  );
 
+  // Correspondência flexível: usa includes/startsWith em vez de regex exato
   const nameIdx = lower.findIndex((h) =>
-    /^(nome|name|categoria|category|cat|descri[çc][aã]o|description)$/.test(h)
+    /^(nome|name|categoria|category|cat|descri[çc][aã]o|description)$/.test(h) ||
+    h.includes("nome") || h.includes("name") || h.includes("categoria")
   );
   const groupIdx = lower.findIndex((h) =>
-    /^(grupo|group|grup|grp|g)$/.test(h)
+    /^(grupo|group|grup|grp|g)$/.test(h) ||
+    h.includes("grupo") || h.includes("group")
   );
   const subgroupIdx = lower.findIndex((h) =>
-    /^(subgrupo|subgroup|subgrup|subgrp|subgrupo|sub|sg)$/.test(h)
+    /^(subgrupo|subgroup|subgrup|subgrp|subgrupo|sub|sg)$/.test(h) ||
+    h.includes("subgrupo") || h.includes("subgroup") || h.includes("subgrupo")
   );
   const typeIdx = lower.findIndex((h) =>
-    /^(tipo|type|tp|t|natureza)$/.test(h)
+    /^(tipo|type|tp|t|natureza)$/.test(h) ||
+    h.includes("tipo") || h.includes("type")
   );
 
   if (nameIdx === -1 || groupIdx === -1 || subgroupIdx === -1 || typeIdx === -1) return null;
@@ -216,22 +223,49 @@ function detectCategoryColumns(headers: string[]): CategoryColumnMap | null {
 function normalizeCategoryType(raw: string): "INCOME" | "EXPENSE" | null {
   const t = raw.trim().toLowerCase().replace(/['"]/g, "");
   if (/^(receita|entrada|income|in|crédito|credito|r|1)$/.test(t)) return "INCOME";
-  if (/^(despesa|saída|saida|expense|out|débito|debito|d|2|e)$/.test(t)) return "EXPENSE";
+  if (/^(despesa|sa[ií]da|saida|expense|out|d[eé]bito|debito|d|2|e)$/.test(t)) return "EXPENSE";
   return null;
 }
 
 export function parseCategoryCSV(content: string): ParsedCategory[] {
-  const lines = content
+  // Remove BOM (comum em CSVs exportados do Excel no Windows)
+  const cleaned = content.replace(/^\ufeff/, "");
+
+  const lines = cleaned
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
     .split("\n")
     .filter((l) => l.trim());
 
-  if (lines.length < 2) return [];
+  if (lines.length < 1) return [];
 
   const delimiter = detectDelimiter(lines[0]);
   const headers = lines[0].split(delimiter);
-  const colMap = detectCategoryColumns(headers);
+  let colMap = detectCategoryColumns(headers);
+
+  // Se não detectou cabeçalho, verifica se a primeira linha parece dados
+  // Se sim, assume ordem: NOME, GRUPO, SUBGRUPO, TIPO (4 colunas)
+  if (!colMap && headers.length >= 4) {
+    // Verifica se a última coluna da primeira linha parece um tipo válido
+    const lastCol = headers[headers.length - 1].trim().toLowerCase().replace(/['"]/g, "");
+    if (normalizeCategoryType(lastCol) !== null) {
+      // Primeira linha são dados, não cabeçalho — assume ordem fixa
+      colMap = { name: 0, group: 1, subgroup: 2, type: 3 };
+      // Processa a partir da linha 0 (inclui primeira linha como dados)
+      const categories: ParsedCategory[] = [];
+      for (let i = 0; i < lines.length; i++) {
+        const cols = lines[i].split(delimiter);
+        if (cols.length < 4) continue;
+        const name = cols[0].trim().replace(/^["']|["']$/g, "");
+        const group = cols[1].trim().replace(/^["']|["']$/g, "");
+        const subgroup = cols[2].trim().replace(/^["']|["']$/g, "");
+        const type = normalizeCategoryType(cols[3]);
+        if (!name || !group || !subgroup || !type) continue;
+        categories.push({ name, group, subgroup, type });
+      }
+      return categories;
+    }
+  }
 
   if (!colMap) return [];
 
