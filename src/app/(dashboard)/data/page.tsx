@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { FiTrash2, FiPlus, FiChevronUp, FiChevronDown, FiUpload } from "react-icons/fi";
-import { parseFile, parseCategoryCSV, readFileAsText, type ParsedTransaction, type ParsedCategory } from "@/lib/import-parser";
+import { parseFile, parseCategoryCSV, parsePDF, readFileAsText, type ParsedTransaction, type ParsedCategory } from "@/lib/import-parser";
 import { motion, AnimatePresence } from "framer-motion";
 import { useProfile } from "@/lib/profile-context";
 import { DataSkeleton } from "@/app/components/ui/skeleton";
@@ -146,6 +146,8 @@ export default function DataPage() {
   const [importing, setImporting] = useState(false);
   const [importFileName, setImportFileName] = useState('');
   const [importOriginId, setImportOriginId] = useState('');
+  const [importInvert, setImportInvert] = useState(false);
+  const [importParsing, setImportParsing] = useState(false);
   const [catImportModal, setCatImportModal] = useState(false);
   const [catImportData, setCatImportData] = useState<ParsedCategory[]>([]);
   const [catImportSelected, setCatImportSelected] = useState<Set<number>>(new Set());
@@ -939,42 +941,70 @@ export default function DataPage() {
             >
               <div className="p-5 border-b border-[var(--border)]">
                 <h3 className="text-sm font-medium text-[var(--foreground)] mb-3">Importar Transações</h3>
-                <p className="text-xs text-[var(--muted-foreground)] mb-3">Selecione um arquivo CSV ou OFX exportado do seu banco.</p>
+                <p className="text-xs text-[var(--muted-foreground)] mb-3">Selecione um arquivo CSV, OFX ou PDF exportado do seu banco.</p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv,.ofx,.qfx"
+                  accept=".csv,.ofx,.qfx,.pdf"
                   className="hidden"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
                     setImportFileName(file.name);
-                    readFileAsText(file).then((content) => {
-                      const parsed = parseFile(content, file.name);
+                    setImportData([]);
+                    setImportSelected(new Set());
+                    setImportInvert(false);
+                    setImportParsing(true);
+                    try {
+                      let parsed: ParsedTransaction[];
+                      if (file.name.toLowerCase().endsWith('.pdf')) {
+                        parsed = await parsePDF(file);
+                      } else {
+                        const content = await readFileAsText(file);
+                        parsed = parseFile(content, file.name);
+                      }
                       setImportData(parsed);
                       setImportSelected(new Set(parsed.map((_, i) => i)));
-                    });
+                    } finally {
+                      setImportParsing(false);
+                    }
                     e.target.value = '';
                   }}
                 />
-                <button
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[var(--surface-alt)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--muted-foreground)]"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <FiUpload size={12} /> {importFileName || 'Selecionar arquivo'}
-                </button>
-                <div className="mt-3">
-                  <label className="text-xs text-[var(--muted-foreground)] mb-1 block">Origem das transações</label>
-                  <select
-                    className="edit-field w-full max-w-[200px]"
-                    value={importOriginId}
-                    onChange={(e) => setImportOriginId(e.target.value)}
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all bg-[var(--surface-alt)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--muted-foreground)]"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={importParsing}
                   >
-                    <option value="">Sem origem</option>
-                    {origins.map((o) => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
-                    ))}
-                  </select>
+                    <FiUpload size={12} /> {importParsing ? 'Lendo arquivo…' : (importFileName || 'Selecionar arquivo')}
+                  </button>
+                  {importData.length > 0 && (
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={importInvert}
+                        onChange={(e) => setImportInvert(e.target.checked)}
+                        className="accent-[#3ecf8e]"
+                      />
+                      Inverter tipo (entrada ↔ saída)
+                    </label>
+                  )}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-4">
+                  <div>
+                    <label className="text-xs text-[var(--muted-foreground)] mb-1 block">Origem das transações</label>
+                    <select
+                      className="edit-field w-full max-w-[200px]"
+                      value={importOriginId}
+                      onChange={(e) => setImportOriginId(e.target.value)}
+                    >
+                      <option value="">Sem origem</option>
+                      {origins.map((o) => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
               {importData.length > 0 && (
@@ -1003,44 +1033,58 @@ export default function DataPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {importData.map((t, i) => (
-                          <tr
-                            key={i}
-                            className={`border-b border-[var(--border)] cursor-pointer transition-colors ${importSelected.has(i) ? 'bg-[var(--surface)]' : 'bg-[var(--surface)] opacity-40'}`}
-                            onClick={() => {
-                              const next = new Set(importSelected);
-                              if (next.has(i)) next.delete(i); else next.add(i);
-                              setImportSelected(next);
-                            }}
-                          >
-                            <td className="px-4 py-1.5 text-center">
-                              <input
-                                type="checkbox"
-                                checked={importSelected.has(i)}
-                                readOnly
-                                className="accent-[#3ecf8e] pointer-events-none"
-                              />
-                            </td>
-                            <td className="px-4 py-1.5 text-[var(--foreground)]">{new Date(t.date + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                            <td className="px-4 py-1.5 text-[var(--foreground)] truncate max-w-[200px]">{t.description}</td>
-                            <td className={`px-4 py-1.5 text-right ${t.type === 'INCOME' ? 'text-[#43b581]' : 'text-[#ed4245]'}`}>
-                              {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </td>
-                            <td className="px-4 py-1.5">
-                              <span className={`text-[10px] font-medium uppercase ${t.type === 'INCOME' ? 'text-[#43b581]' : 'text-[#ed4245]'}`}>
-                                {t.type === 'INCOME' ? 'Entrada' : 'Saída'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {importData.map((t, i) => {
+                          const effectiveType = importInvert
+                            ? (t.type === 'INCOME' ? 'EXPENSE' : 'INCOME')
+                            : t.type;
+                          return (
+                            <tr
+                              key={i}
+                              className={`border-b border-[var(--border)] cursor-pointer transition-colors ${importSelected.has(i) ? 'bg-[var(--surface)]' : 'bg-[var(--surface)] opacity-40'}`}
+                              onClick={() => {
+                                const next = new Set(importSelected);
+                                if (next.has(i)) next.delete(i); else next.add(i);
+                                setImportSelected(next);
+                              }}
+                            >
+                              <td className="px-4 py-1.5 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={importSelected.has(i)}
+                                  readOnly
+                                  className="accent-[#3ecf8e] pointer-events-none"
+                                />
+                              </td>
+                              <td className="px-4 py-1.5 text-[var(--foreground)]">{new Date(t.date + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                              <td className="px-4 py-1.5 text-[var(--foreground)] truncate max-w-[200px]">{t.description}</td>
+                              <td className={`px-4 py-1.5 text-right ${effectiveType === 'INCOME' ? 'text-[#43b581]' : 'text-[#ed4245]'}`}>
+                                {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              </td>
+                              <td className="px-4 py-1.5">
+                                <span className={`text-[10px] font-medium uppercase ${effectiveType === 'INCOME' ? 'text-[#43b581]' : 'text-[#ed4245]'}`}>
+                                  {effectiveType === 'INCOME' ? 'Entrada' : 'Saída'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 </>
               )}
-              {importData.length === 0 && importFileName && (
+              {importData.length === 0 && importFileName && !importParsing && (
                 <div className="p-5">
-                  <p className="text-xs text-[#ed4245]">Nenhuma transação encontrada no arquivo. Verifique se o formato é compatível (CSV com colunas Data, Descrição, Valor ou OFX padrão).</p>
+                  <p className="text-xs text-[#ed4245]">Nenhuma transação encontrada no arquivo. Verifique se o formato é compatível (CSV com colunas Data, Descrição, Valor; OFX padrão; ou PDF com tabela de extrato).</p>
+                </div>
+              )}
+              {importParsing && (
+                <div className="p-5 flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-[var(--primary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                  <span className="text-xs text-[var(--muted-foreground)]">Extraindo dados do arquivo…</span>
                 </div>
               )}
               <div className="p-4 border-t border-[var(--border)] flex justify-end gap-2">
@@ -1054,7 +1098,12 @@ export default function DataPage() {
                   disabled={importing || importSelected.size === 0}
                   onClick={async () => {
                     setImporting(true);
-                    const selected = importData.filter((_, i) => importSelected.has(i));
+                    const selected = importData
+                      .filter((_, i) => importSelected.has(i))
+                      .map((t) => importInvert
+                        ? { ...t, type: t.type === 'INCOME' ? 'EXPENSE' : 'INCOME' }
+                        : t
+                      );
                     const res = await pfetch('/api/transactions/import', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },

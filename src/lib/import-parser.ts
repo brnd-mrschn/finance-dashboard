@@ -1,4 +1,4 @@
-// Parser para arquivos CSV e OFX de bancos brasileiros
+// Parser para arquivos CSV, OFX e PDF de bancos brasileiros
 
 /**
  * Lê um File como texto, detectando automaticamente o encoding.
@@ -201,6 +201,160 @@ export function parseFile(content: string, filename: string): ParsedTransaction[
   const ext = filename.toLowerCase().split(".").pop();
   if (ext === "ofx" || ext === "qfx") return parseOFX(content);
   return parseCSV(content);
+}
+
+// ── PDF ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Extrai transações de um arquivo PDF.
+ * Usa pdfjs-dist com import dinâmico (browser-only, SSR desabilitado).
+ *
+ * Estratégia:
+ *  1. Extrai todo o texto de cada página via getTextContent()
+ *  2. Agrupa itens por linha (Y position com tolerância de 4px)
+ *  3. Tenta detectar colunas (data, descrição, valor) nas linhas
+ *  4. Fallback: varre linha a linha buscando padrões de data + valor
+ */
+export async function parsePDF(file: File): Promise<ParsedTransaction[]> {
+  // Import dinâmico — nunca executado no servidor
+  const pdfjsLib = await import("pdfjs-dist");
+
+  // Worker: usa CDN para evitar problemas de bundling no Next.js
+  const workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+  // Coleta todas as linhas de texto do PDF
+  const allLines: string[] = [];
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+
+    // Agrupa itens por posição Y (tolerância de 4px = mesma linha)
+    const byY = new Map<number, string[]>();
+    for (const item of content.items) {
+      if (!("str" in item)) continue;
+      const str = (item as { str: string; transform: number[] }).str.trim();
+      if (!str) continue;
+      const y = Math.round((item as { str: string; transform: number[] }).transform[5] / 4) * 4;
+      if (!byY.has(y)) byY.set(y, []);
+      byY.get(y)!.push(str);
+    }
+
+    // Ordena por Y decrescente (topo → base da página)
+    const sortedYs = [...byY.keys()].sort((a, b) => b - a);
+    for (const y of sortedYs) {
+      allLines.push(byY.get(y)!.join(" "));
+    }
+  }
+
+  // ── Tentativa 1: detectar cabeçalho de tabela e parsear colunas ──────────
+  const transactions = tryParseTableLines(allLines);
+  if (transactions.length > 0) return transactions;
+
+  // ── Tentativa 2: varredura linha a linha por padrão data + valor ──────────
+  return fallbackScanLines(allLines);
+}
+
+/**
+ * Tenta encontrar um cabeçalho de tabela (linha com "data" e "valor")
+ * e parsear as linhas seguintes como linhas de tabela.
+ */
+function tryParseTableLines(lines: string[]): ParsedTransaction[] {
+  // Encontra linha de cabeçalho
+  let headerIdx = -1;
+  let colMap: { date: number; description: number; amount: number } | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const parts = lines[i].split(/\s{2,}|\t/).map((p) => p.trim()).filter(Boolean);
+    const cm = detectColumns(parts);
+    if (cm) {
+      headerIdx = i;
+      colMap = cm;
+      break;
+    }
+  }
+
+  if (headerIdx === -1 || !colMap) return [];
+
+  const transactions: ParsedTransaction[] = [];
+  const delimiter = /\s{2,}|\t/;
+
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const parts = lines[i].split(delimiter).map((p) => p.trim()).filter(Boolean);
+    if (parts.length <= Math.max(colMap.date, colMap.description, colMap.amount)) continue;
+
+    const date = parseDate(parts[colMap.date]);
+    const description = parts[colMap.description];
+    const amount = parseAmount(parts[colMap.amount]);
+
+    if (!date || !description || amount === null) continue;
+
+    transactions.push({
+      date,
+      description,
+      amount: Math.abs(amount),
+      type: amount >= 0 ? "EXPENSE" : "INCOME",
+    });
+  }
+
+  return transactions;
+}
+
+/**
+ * Varredura linha a linha: busca padrões de data seguidos de valor monetário.
+ * Útil para PDFs sem estrutura de tabela clara.
+ */
+function fallbackScanLines(lines: string[]): ParsedTransaction[] {
+  const transactions: ParsedTransaction[] = [];
+
+  // Regex para detectar data no início ou meio da linha
+  const dateRe = /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}[\/\-]\d{2}[\/\-]\d{2})/;
+  // Regex para detectar valor monetário (R$ opcional, número com vírgula/ponto)
+  const amountRe = /(?:R\$\s*)?(-?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))/g;
+
+  for (const line of lines) {
+    const dateMatch = line.match(dateRe);
+    if (!dateMatch) continue;
+
+    const date = parseDate(dateMatch[1]);
+    if (!date) continue;
+
+    // Coleta todos os valores monetários na linha
+    const amounts: number[] = [];
+    let m: RegExpExecArray | null;
+    amountRe.lastIndex = 0;
+    while ((m = amountRe.exec(line)) !== null) {
+      const val = parseAmount(m[1]);
+      if (val !== null) amounts.push(val);
+    }
+
+    if (amounts.length === 0) continue;
+
+    // Usa o último valor como montante (padrão em extratos)
+    const amount = amounts[amounts.length - 1];
+
+    // Descrição: texto entre a data e o primeiro valor
+    const afterDate = line.slice(dateMatch.index! + dateMatch[0].length).trim();
+    const firstAmountIdx = afterDate.search(/(?:R\$\s*)?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})/);
+    const description = firstAmountIdx > 0
+      ? afterDate.slice(0, firstAmountIdx).trim()
+      : afterDate.replace(/(?:R\$\s*)?-?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})/g, "").trim();
+
+    if (!description) continue;
+
+    transactions.push({
+      date,
+      description,
+      amount: Math.abs(amount),
+      type: amount >= 0 ? "EXPENSE" : "INCOME",
+    });
+  }
+
+  return transactions;
 }
 
 // ── Categorias CSV ─────────────────────────────────────────────────────────
